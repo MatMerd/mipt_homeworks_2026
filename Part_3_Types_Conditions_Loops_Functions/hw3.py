@@ -86,7 +86,7 @@ def main() -> None:  # noqa: PLR0912, C901, PLR0915
     for line in open(0):  # noqa: SIM115
         command = line.split()
         if not (command):
-            print(UNKNOWN_COMMAND_MSG)  # noqa: T201
+            print(UNKNOWN_COMMAND_MSG)
             continue
 
         if command[0] == "income":
@@ -95,7 +95,7 @@ def main() -> None:  # noqa: PLR0912, C901, PLR0915
                 continue
             amount = command[1].replace(",", ".")
             if not is_valid_number(amount):
-                print(UNKNOWN_COMMAND_MSG)  # noqa: T201
+                print(UNKNOWN_COMMAND_MSG)
                 continue
             date = extract_date(command[2])
             if not (date):
