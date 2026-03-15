@@ -191,6 +191,7 @@ def main() -> None:
     costs = []
 
     for line in open(0):
+        line = line.strip()
 
         if line == "":
             print(UNKNOWN_COMMAND_MSG)
