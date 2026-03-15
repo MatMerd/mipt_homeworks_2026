@@ -114,6 +114,9 @@ def extract_amount(amount_string: str) -> float | None:
 
     if digits_before == 0 or (seen_separator and digits_after == 0):
         return None
+    
+    if seen_separator and digits_after == 0:
+        return None
 
     return sign * (int_part + (frac_part / frac_div))
 
@@ -165,9 +168,9 @@ def print_stats(
     print(f"Суммарный капитал: {total_capital:.2f} рублей")
 
     if delta >= 0:
-        print(f"В этом месяце прибыль составила {delta:.2f} рублей")
+        print(f"B этом месяце прибыль составила {delta:.2f} рублей")
     else:
-        print(f"В этом месяце убыток составил {(-delta):.2f} рублей")
+        print(f"B этом месяце убыток составил {(-delta):.2f} рублей")
 
     print(f"Доходы: {month_income:.2f} рублей")
     print(f"Расходы: {month_cost:.2f} рублей")
@@ -188,7 +191,6 @@ def main() -> None:
     costs = []
 
     for line in open(0):
-        line = line.strip()
 
         if line == "":
             print(UNKNOWN_COMMAND_MSG)
