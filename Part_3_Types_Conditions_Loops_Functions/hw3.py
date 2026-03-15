@@ -3,6 +3,19 @@ NONPOSITIVE_VALUE_MSG = "Значение должно быть больше н�
 INCORRECT_DATE_MSG = "Неправильная дата!"
 OP_SUCCESS_MSG = "Добавлено"
 
+k1 = 1
+k2 = 2
+k3 = 3
+k4 = 4
+k10 = 10
+k12 = 12
+k28 = 28
+k29 = 29
+k30 = 30
+k31 = 31
+k100 = 100
+k400 = 400
+
 
 def is_leap_year(year: int) -> bool:
     """
@@ -12,7 +25,7 @@ def is_leap_year(year: int) -> bool:
     :return: Значение високосности.
     :rtype: bool
     """
-    return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+    return (year % k4 == 0 and year % k100 != 0) or (year % k400 == 0)
 
 
 def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
@@ -24,12 +37,12 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     :rtype: tuple[int, int, int] | None
     """
     parts = maybe_dt.split("-")
-    if len(parts) != 3:
+    if len(parts) != k3:
         return None
 
     day_str, month_str, year_str = parts
 
-    if len(day_str) != 2 or len(month_str) != 2 or len(year_str) != 4:
+    if len(day_str) != k2 or len(month_str) != k2 or len(year_str) != k4:
         return None
 
     if not day_str.isdigit() or not month_str.isdigit() or not year_str.isdigit():
@@ -39,16 +52,16 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     month = int(month_str)
     year = int(year_str)
 
-    if month < 1 or month > 12:
+    if month < k1 or month > k12:
         return None
 
-    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    days_in_month = [k31, k28, k31, k30, k31, k30, k31, k31, k30, k31, k30, k31]
 
-    max_day = days_in_month[month - 1]
-    if month == 2 and is_leap_year(year):
-        max_day = 29
+    max_day = days_in_month[month - k1]
+    if month == k2 and is_leap_year(year):
+        max_day = k29
 
-    if day < 1 or day > max_day:
+    if day < k1 or day > max_day:
         return None
 
     return day, month, year
@@ -84,13 +97,13 @@ def extract_amount(amount_string: str) -> float | None:
         if "0" <= ch <= "9":
             digit = ord(ch) - ord("0")
             if not seen_separator:
-                int_part = int_part * 10 + digit
-                digits_before += 1
+                int_part = int_part * k10 + digit
+                digits_before += k1
             else:
-                frac_part = frac_part * 10 + digit
-                frac_div *= 10
-                digits_after += 1
-        elif ch == "." or ch == ",":
+                frac_part = frac_part * k10 + digit
+                frac_div *= k10
+                digits_after += k1
+        elif ch in {".", ","}:
             if seen_separator:
                 return None
             seen_separator = True
@@ -99,10 +112,7 @@ def extract_amount(amount_string: str) -> float | None:
 
         index += 1
 
-    if digits_before == 0:
-        return None
-
-    if seen_separator and digits_after == 0:
+    if digits_before == 0 or (seen_separator and digits_after == 0):
         return None
 
     return sign * (int_part + (frac_part / frac_div))
@@ -110,14 +120,10 @@ def extract_amount(amount_string: str) -> float | None:
 
 def is_valid_category(category_name: str) -> bool:
     for ch in category_name:
-        if ch == " " or ch == "." or ch == ",":
+        if ch in {" ", ".", ","}:
             return False
 
     return category_name != ""
-
-
-def date_not_later(day1: int, month1: int, year1: int, day2: int, month2: int, year2: int) -> bool:
-    return (year1, month1, day1) <= (year2, month2, day2)
 
 
 def format_detail_amount(value: float) -> str:
@@ -125,7 +131,12 @@ def format_detail_amount(value: float) -> str:
     return result or "0"
 
 
-def print_stats(stats_date: tuple[int, int, int], incomes: list, costs: list):
+def print_stats(
+    stats_date: tuple[int, int, int],
+    incomes: list[tuple[float, int, int, int]],
+    costs: list[tuple[str, float, int, int, int]],
+) -> None:
+
     day, month, year = stats_date
 
     total_capital = 0.0
@@ -134,13 +145,13 @@ def print_stats(stats_date: tuple[int, int, int], incomes: list, costs: list):
     category_sums = {}
 
     for amount, inc_day, inc_month, inc_year in incomes:
-        if date_not_later(inc_day, inc_month, inc_year, day, month, year):
+        if (inc_day, inc_month, inc_year) <= (day, month, year):
             total_capital += amount
             if inc_month == month and inc_year == year:
                 month_income += amount
 
     for category, amount, cost_day, cost_month, cost_year in costs:
-        if date_not_later(cost_day, cost_month, cost_year, day, month, year):
+        if (cost_day, cost_month) <= (cost_year, day, month, year):
             total_capital -= amount
             if cost_month == month and cost_year == year:
                 month_cost += amount
@@ -166,7 +177,7 @@ def print_stats(stats_date: tuple[int, int, int], incomes: list, costs: list):
     sorted_categories = sorted(category_sums.keys())
     for index in range(len(sorted_categories)):
         category = sorted_categories[index]
-        print(f"{index + 1}. {category}: {format_detail_amount(category_sums[category])}")
+        print(f"{index + k1}. {category}: {format_detail_amount(category_sums[category])}")
 
 
 
@@ -187,16 +198,16 @@ def main() -> None:
         command = parts[0]
 
         if command == "income":
-            if len(parts) != 3:
+            if len(parts) != k3:
                 print(UNKNOWN_COMMAND_MSG)
                 continue
 
-            amount = extract_amount(parts[1])
+            amount = extract_amount(parts[k1])
             if amount is None or amount <= 0:
                 print(NONPOSITIVE_VALUE_MSG)
                 continue
 
-            current_date = extract_date(parts[2])
+            current_date = extract_date(parts[k2])
             if current_date is None:
                 print(INCORRECT_DATE_MSG)
                 continue
@@ -206,7 +217,7 @@ def main() -> None:
             print(OP_SUCCESS_MSG)
 
         elif command == "cost":
-            if len(parts) != 4:
+            if len(parts) != k4:
                 print(UNKNOWN_COMMAND_MSG)
                 continue
 
@@ -215,12 +226,12 @@ def main() -> None:
                 print(UNKNOWN_COMMAND_MSG)
                 continue
 
-            amount = extract_amount(parts[2])
+            amount = extract_amount(parts[k2])
             if amount is None or amount <= 0:
                 print(NONPOSITIVE_VALUE_MSG)
                 continue
 
-            current_date = extract_date(parts[3])
+            current_date = extract_date(parts[k3])
             if current_date is None:
                 print(INCORRECT_DATE_MSG)
                 continue
@@ -230,11 +241,11 @@ def main() -> None:
             print(OP_SUCCESS_MSG)
 
         elif command == "stats":
-            if len(parts) != 2:
+            if len(parts) != k2:
                 print(UNKNOWN_COMMAND_MSG)
                 continue
 
-            current_date = extract_date(parts[1])
+            current_date = extract_date(parts[k1])
             if current_date is None:
                 print(INCORRECT_DATE_MSG)
                 continue
