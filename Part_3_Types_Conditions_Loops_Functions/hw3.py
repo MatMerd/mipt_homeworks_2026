@@ -349,6 +349,54 @@ def process_line(line: str, incomes: IncomeHistory, costs: CostHistory) -> None:
 
     output(UNKNOWN_COMMAND_MSG)
 
+    str = maybe_dt.split('-')
+    if len(str) != 3:
+        return None
+
+    day, month, year = str
+    for s in day, month, year:
+        if not s.isdigit():
+            return None
+
+
+    if not(len(day) == 2 and len(month) == 2 and len(year) == 4):
+        return None
+
+    day, month, year = map(int, maybe_dt.split('-'))
+    if not(1 <= month <= 12):
+        return None
+    days_in_moth = [31, 29 if is_leap_year(year) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if not(1 <= day <= days_in_moth[month - 1]):
+        return None
+
+    return day, month, year
+
+
+def is_valid_number(maybe_num: str) -> bool:
+    maybe_num = maybe_num.replace(',', '.')
+    if maybe_num.count('.') > 1:
+        return False
+
+    if maybe_num.startswith('-'):
+        maybe_num = maybe_num[1:]
+
+    if maybe_num == "":
+        return False
+
+    if '.' in maybe_num:
+        left, right = maybe_num.split('.', 1)
+        if left == "" and right == "":
+            return False
+        if left != "" and not left.isdigit():
+            return False
+        if right != "" and not right.isdigit():
+            return False
+        return True
+
+    return maybe_num.isdigit()
+
+
+
 
 def main() -> None:
     """Ваш код здесь"""
