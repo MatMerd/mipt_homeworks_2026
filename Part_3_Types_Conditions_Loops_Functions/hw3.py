@@ -74,10 +74,8 @@ def extract_amount(amount_string: str) -> float | None:
     sign = 1
     index = 0
 
-    if amount_string[0] == "-":
-        sign = -1
-        index = 1
-    elif amount_string[0] == "+":
+    if amount_string[0] in {"-", "+"}:
+        sign = {"-": -1, "+": 1}[amount_string[0]]
         index = 1
 
     if index == len(amount_string):
@@ -113,9 +111,6 @@ def extract_amount(amount_string: str) -> float | None:
         index += 1
 
     if digits_before == 0 or (seen_separator and digits_after == 0):
-        return None
-    
-    if seen_separator and digits_after == 0:
         return None
 
     return sign * (int_part + (frac_part / frac_div))
@@ -183,77 +178,91 @@ def print_stats(
         print(f"{index + k1}. {category}: {format_detail_amount(category_sums[category])}")
 
 
+def process_income(parts: list[str], incomes: list[tuple[float, int, int, int]]) -> None:
+    if len(parts) != k3:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    amount = extract_amount(parts[k1])
+    if amount is None or amount <= 0:
+        print(NONPOSITIVE_VALUE_MSG)
+        return
+
+    current_date = extract_date(parts[k2])
+    if current_date is None:
+        print(INCORRECT_DATE_MSG)
+        return
+
+    day, month, year = current_date
+    incomes.append((amount, day, month, year))
+    print(OP_SUCCESS_MSG)
+
+
+def process_cost(parts: list[str], costs: list[tuple[str, float, int, int, int]]) -> None:
+    if len(parts) != k4:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    category_name = parts[1]
+    if not is_valid_category(category_name):
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    amount = extract_amount(parts[k2])
+    if amount is None or amount <= 0:
+        print(NONPOSITIVE_VALUE_MSG)
+        return
+
+    current_date = extract_date(parts[k3])
+    if current_date is None:
+        print(INCORRECT_DATE_MSG)
+        return
+
+    day, month, year = current_date
+    costs.append((category_name, amount, day, month, year))
+    print(OP_SUCCESS_MSG)
+
+
+def process_stats(
+    parts: list[str],
+    incomes: list[tuple[float, int, int, int]],
+    costs: list[tuple[str, float, int, int, int]],
+) -> None:
+    if len(parts) != k2:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    current_date = extract_date(parts[k1])
+    if current_date is None:
+        print(INCORRECT_DATE_MSG)
+        return
+
+    print_stats(current_date, incomes, costs)
+
+
 def run_process() -> None:
     incomes = []
     costs = []
 
-    for line in open(0):
-        line = line.strip()
+    with open(0) as input_stream:
+        for raw_line in input_stream:
+            line = raw_line.strip()
 
-        if line == "":
-            print(UNKNOWN_COMMAND_MSG)
-            continue
-
-        parts = line.split()
-        command = parts[0]
-
-        if command == "income":
-            if len(parts) != k3:
+            if line == "":
                 print(UNKNOWN_COMMAND_MSG)
                 continue
 
-            amount = extract_amount(parts[k1])
-            if amount is None or amount <= 0:
-                print(NONPOSITIVE_VALUE_MSG)
-                continue
+            parts = line.split()
+            command = parts[0]
 
-            current_date = extract_date(parts[k2])
-            if current_date is None:
-                print(INCORRECT_DATE_MSG)
-                continue
-
-            day, month, year = current_date
-            incomes.append((amount, day, month, year))
-            print(OP_SUCCESS_MSG)
-
-        elif command == "cost":
-            if len(parts) != k4:
+            if command == "income":
+                process_income(parts, incomes)
+            elif command == "cost":
+                process_cost(parts, costs)
+            elif command == "stats":
+                process_stats(parts, incomes, costs)
+            else:
                 print(UNKNOWN_COMMAND_MSG)
-                continue
-
-            category_name = parts[1]
-            if not is_valid_category(category_name):
-                print(UNKNOWN_COMMAND_MSG)
-                continue
-
-            amount = extract_amount(parts[k2])
-            if amount is None or amount <= 0:
-                print(NONPOSITIVE_VALUE_MSG)
-                continue
-
-            current_date = extract_date(parts[k3])
-            if current_date is None:
-                print(INCORRECT_DATE_MSG)
-                continue
-
-            day, month, year = current_date
-            costs.append((category_name, amount, day, month, year))
-            print(OP_SUCCESS_MSG)
-
-        elif command == "stats":
-            if len(parts) != k2:
-                print(UNKNOWN_COMMAND_MSG)
-                continue
-
-            current_date = extract_date(parts[k1])
-            if current_date is None:
-                print(INCORRECT_DATE_MSG)
-                continue
-
-            print_stats(current_date, incomes, costs)
-
-        else:
-            print(UNKNOWN_COMMAND_MSG)
 
 
 def main() -> None:
