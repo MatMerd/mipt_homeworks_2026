@@ -185,6 +185,10 @@ def print_stats(
 
 
 
+def income_handler(amount: float, income_date: str) -> str:
+    return f"{OP_SUCCESS_MSG} {amount=} {income_date=}"
+
+
 def main() -> None:
     """Ваш код здесь"""
     incomes = []

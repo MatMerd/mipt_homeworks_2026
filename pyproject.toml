@@ -21,6 +21,9 @@ ignore = [
     "ISC001",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"Part_3_Types_Conditions_Loops_Functions/*" = ["T201"]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true
