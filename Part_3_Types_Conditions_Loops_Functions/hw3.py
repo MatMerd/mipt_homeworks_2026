@@ -1,7 +1,7 @@
-UNKNOWN_COMMAND_MSG = "Неизвестная команда!"
-NONPOSITIVE_VALUE_MSG = "Значение должно быть больше нуля!"
-INCORRECT_DATE_MSG = "Неправильная дата!"
-OP_SUCCESS_MSG = "Добавлено"
+UNKNOWN_COMMAND_MSG = "Unknown command!"
+NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
+INCORRECT_DATE_MSG = "Invalid date!"
+OP_SUCCESS_MSG = "Added"
 
 k1 = 1
 k2 = 2
