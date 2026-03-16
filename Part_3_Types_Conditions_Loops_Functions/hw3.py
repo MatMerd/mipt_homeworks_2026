@@ -183,10 +183,7 @@ def print_stats(
         print(f"{index + k1}. {category}: {format_detail_amount(category_sums[category])}")
 
 
-
-
-def main() -> None:
-    """Ваш код здесь"""
+def run_process() -> None:
     incomes = []
     costs = []
 
@@ -257,6 +254,11 @@ def main() -> None:
 
         else:
             print(UNKNOWN_COMMAND_MSG)
+
+
+def main() -> None:
+    """Ваш код здесь"""
+    run_process()
 
 
 if __name__ == "__main__":
