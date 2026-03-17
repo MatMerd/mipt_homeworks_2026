@@ -1,7 +1,13 @@
+#!/usr/bin/env python
+
 UNKNOWN_COMMAND_MSG = "Unknown command!"
 NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
 INCORRECT_DATE_MSG = "Invalid date!"
 OP_SUCCESS_MSG = "Added"
+
+TOTAL_INDEX = 0
+MONTH_INDEX = 1
+CATEGORY_INDEX = 2
 
 k1 = 1
 k2 = 2
@@ -12,10 +18,6 @@ k12 = 12
 k29 = 29
 k100 = 100
 k400 = 400
-
-TOTAL_INDEX = 0
-MONTH_INDEX = 1
-CATEGORY_INDEX = 2
 
 ParsedDate = tuple[int, int, int]
 IncomeRecord = tuple[float, int, int, int]
