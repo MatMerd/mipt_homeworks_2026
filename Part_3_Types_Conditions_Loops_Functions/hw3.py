@@ -56,16 +56,12 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     month = int(maybe_dt[1])
     year = int(maybe_dt[2])
 
-    if day < 1 or day > 31 or month < 1 or month > 12:
-        return None
-
-    elif day >= 31 and month in [4, 6, 9, 11]:
-        return None
-
-    elif is_leap_year(year) == False and month == 2 and day == 29:
-        return None
-
-    elif month == 2 and day > 29:
+    if (
+        (day < 1 or day > 31 or month < 1 or month > 12)
+        or (day >= 31 and month in [4, 6, 9, 11])
+        or (not is_leap_year(year) and month == 2 and day == 29)
+        or (month == 2 and day > 29)
+    ):
         return None
 
     return day, month, year
@@ -231,15 +227,25 @@ def details_handler(date: str) -> str:
             )
 
 
+LENGTH_OF_INCOME_COMMAND = 3
+LENGTH_OF_COST_COMMAND = 4
+LENGTH_OF_STATS_COMMAND = 2
+LENGTH_OF_UNKNOWN_COMMAND_LEFT_BOUNDARE = 4
+LENGTH_OF_UNKNOWN_COMMAND_RIGHT_BOUNDARE = 1
+
+
 def main() -> None:
-    """Ваш код здесь"""
     while True:
         command = input()
         parts = command.split()
-        if len(command.split()) < 1 or len(command.split()) > 4:
+
+        if (
+            len(parts) < LENGTH_OF_UNKNOWN_COMMAND_RIGHT_BOUNDARE
+            or len(parts) > LENGTH_OF_UNKNOWN_COMMAND_LEFT_BOUNDARE
+        ):
             print(UNKNOWN_COMMAND_MSG)
 
-        elif len(command.split()) == 3 and command.split()[0] == "income":
+        elif len(parts) == LENGTH_OF_INCOME_COMMAND and parts[0] == "income":
             amount = sum_into_float(parts[1])
             if amount is None:
                 print(UNKNOWN_COMMAND_MSG)
@@ -247,7 +253,7 @@ def main() -> None:
                 res = income_handler(amount, parts[2])
                 print(res)
 
-        elif command.split()[0] == "cost" and len(command.split()) == 4:
+        elif len(parts) == LENGTH_OF_COST_COMMAND and parts[0] == "cost":
             amount = sum_into_float(parts[2])
             if amount is None:
                 print(UNKNOWN_COMMAND_MSG)
@@ -255,8 +261,8 @@ def main() -> None:
                 res = cost_handler(parts[1], amount, parts[3])
                 print(res)
 
-        elif len(command.split()) == 2 and command.split()[0] == "stats":
-            if extract_date(command.split()[1]) is None:
+        elif len(parts) == LENGTH_OF_STATS_COMMAND and parts[0] == "stats":
+            if extract_date(parts[1]) is None:
                 print(INCORRECT_DATE_MSG)
             else:
                 stats_info = details_handler(parts[1])
@@ -267,6 +273,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main() 
-
-# trying to start tests
+    main()
