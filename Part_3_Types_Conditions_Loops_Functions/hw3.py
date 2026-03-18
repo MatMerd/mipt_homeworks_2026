@@ -205,30 +205,30 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     :return: tuple формата (день, месяц, год) или None, если дата неправильная.
     :rtype: tuple[int, int, int] | None
     """
+    result = None
+
     try:
         parts = maybe_dt.split("-")
-        if len(parts) != DATE_PARTS_COUNT:
+        if len(parts) == DATE_PARTS_COUNT:
+            day, month, year = map(int, parts)
+
+            if MIN_MONTH <= month <= MAX_MONTH:
+                days_in_month = [31, 29 if is_leap_year(year) else 28, 31, 30, 31, 30,
+                                31, 31, 30, 31, 30, 31]
+
+                if 1 <= day <= days_in_month[month - 1]:
+                    result = (day, month, year)
+                else:
+                    print(INCORRECT_DATE_MSG)
+            else:
+                print(INCORRECT_DATE_MSG)
+        else:
             print(INCORRECT_DATE_MSG)
-            return None
-
-        day, month, year = map(int, parts)
-
-        if not (MIN_MONTH <= month <= MAX_MONTH):
-            print(INCORRECT_DATE_MSG)
-            return None
-
-        days_in_month = [31, 29 if is_leap_year(year) else 28, 31, 30, 31, 30,
-                         31, 31, 30, 31, 30, 31]
-
-        if not (MIN_MONTH <= day <= days_in_month[month - 1]):
-            print(INCORRECT_DATE_MSG)
-            return None
-
-        return (day, month, year)
 
     except (ValueError, IndexError):
         print(INCORRECT_DATE_MSG)
-        return None
+
+    return result
 
 
 def main() -> None:
