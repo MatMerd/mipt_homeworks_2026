@@ -204,7 +204,7 @@ def details_handler(date: str) -> str:
             f"Expenses: {stats_info[1]} rubles\n\n"
             f"Breakdown (category: amount):"
         )
-    elif stats_info[2] - stats_info[1] >= 0:
+    if stats_info[2] - stats_info[1] >= 0:
         return (
             f"Your statistics as of {date}:\n"
             f"Total capital: {stats_info[0]} rubles\n"
