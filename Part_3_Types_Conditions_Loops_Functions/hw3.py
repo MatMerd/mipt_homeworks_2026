@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
+from calendar import month
+
+
 UNKNOWN_COMMAND_MSG = "Unknown command!"
 NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
 INCORRECT_DATE_MSG = "Invalid date!"
 OP_SUCCESS_MSG = "Added"
+NUMBER_OF_DATE_PARTS = 3
 
-global all_transactions
 all_transactions: list[float | list[list[float | str]] | list[list[str | float]]] = [
     0.0,
     [],
@@ -22,9 +25,7 @@ def is_leap_year(year: int) -> bool:
     :rtype: bool
     """
 
-    if year % 4 == 0 and year % 100 != 0:
-        return True
-    elif year % 400 == 0:
+    if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0:
         return True
     return False
 
@@ -39,7 +40,7 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     """
     if maybe_dt is None:
         return None
-    if len(maybe_dt.split("-")) != 3:
+    if len(maybe_dt.split("-")) != NUMBER_OF_DATE_PARTS:
         return None
     if (
         "--" in maybe_dt
@@ -56,12 +57,17 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     month = int(maybe_dt[1])
     year = int(maybe_dt[2])
 
-    if (
-        (day < 1 or day > 31 or month < 1 or month > 12)
-        or (day >= 31 and month in [4, 6, 9, 11])
-        or (not is_leap_year(year) and month == 2 and day == 29)
-        or (month == 2 and day > 29)
-    ):
+    MONTH_NUMBER_BOUNDS = [1, 12]
+    NUMBER_OF_DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if is_leap_year(year):
+        NUMBER_OF_DAYS_IN_MONTH[1] = 29
+    else:
+        NUMBER_OF_DAYS_IN_MONTH[1] = 28
+    if month < 1 or month > 12:
+        return None
+
+    max_day = NUMBER_OF_DAYS_IN_MONTH[month - 1]
+    if day < 1 or day > max_day:
         return None
 
     return day, month, year
@@ -171,9 +177,8 @@ def sum_into_float(maybe_float: str) -> float | None:
         if char not in "0123456789,.":
             return None
     for char in maybe_float:
-        if char in ".,":
-            if maybe_float.count(char) > 1:
-                return None
+        if char in ".," and maybe_float.count(char) > 1:
+            return None
     if (
         "." in maybe_float or maybe_float.count(",") + maybe_float.count(".") == 0
     ) and maybe_float[0] != ".":
@@ -206,25 +211,24 @@ def details_handler(date: str) -> str:
                 f"Expenses: {stats_info[1]} rubles\n\n"
                 f"Breakdown (category: amount):"
             )
-    else:
-        if stats_info[2] - stats_info[1] >= 0:
-            return (
-                f"Your statistics as of {date}:\n"
-                f"Total capital: {stats_info[0]} rubles\n"
-                f"This month's profit: {stats_info[2] - stats_info[1]} rubles\n"
-                f"Income: {stats_info[2]} rubles\n"
-                f"Expenses: {stats_info[1]} rubles\n\n"
-                f"Breakdown (category: amount):\n{details}"
-            )
-        else:
-            return (
-                f"Your statistics as of {date}:\n"
-                f"Total capital: {stats_info[0]} rubles\n"
-                f"This month's loss: {stats_info[1] - stats_info[2]} rubles\n"
-                f"Income: {stats_info[2]} rubles\n"
-                f"Expenses: {stats_info[1]} rubles\n\n"
-                f"Breakdown (category: amount):\n{details}"
-            )
+    elif stats_info[2] - stats_info[1] >= 0:
+        return (
+            f"Your statistics as of {date}:\n"
+            f"Total capital: {stats_info[0]} rubles\n"
+            f"This month's profit: {stats_info[2] - stats_info[1]} rubles\n"
+            f"Income: {stats_info[2]} rubles\n"
+            f"Expenses: {stats_info[1]} rubles\n\n"
+            f"Breakdown (category: amount):\n{details}"
+        )
+
+    return (
+        f"Your statistics as of {date}:\n"
+        f"Total capital: {stats_info[0]} rubles\n"
+        f"This month's loss: {stats_info[1] - stats_info[2]} rubles\n"
+        f"Income: {stats_info[2]} rubles\n"
+        f"Expenses: {stats_info[1]} rubles\n\n"
+        f"Breakdown (category: amount):\n{details}"
+    )
 
 
 LENGTH_OF_INCOME_COMMAND = 3
