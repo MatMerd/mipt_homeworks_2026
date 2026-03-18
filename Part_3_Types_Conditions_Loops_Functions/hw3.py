@@ -7,6 +7,10 @@ OP_SUCCESS_MSG = "Added"
 EXPECTED_ARGS_COUNT = 2
 MIN_MONTH = 1
 MAX_MONTH = 12
+EXPECTED_INCOME_ARGS = 2
+EXPECTED_COST_ARGS = 3
+DATE_PARTS_COUNT = 3
+
 
 class Data:
     def __init__(self):
@@ -96,7 +100,7 @@ class Handler:
                 print(UNKNOWN_COMMAND_MSG)
 
     def _income(self, details: list):
-        if len(details) != 2:
+        if len(details) != EXPECTED_INCOME_ARGS:
             print(UNKNOWN_COMMAND_MSG)
             return
 
@@ -115,18 +119,18 @@ class Handler:
             print(UNKNOWN_COMMAND_MSG)
             return
 
-        formatted_date = '-'.join(map(str, date_tuple))
+        formatted_date = "-".join(map(str, date_tuple))
         self.data.add_income(formatted_date, amount)
         print(OP_SUCCESS_MSG)
 
     def _cost(self, details: list):
-        if len(details) != 3:
+        if len(details) != EXPECTED_COST_ARGS:
             print(UNKNOWN_COMMAND_MSG)
             return
 
         category, amount_str, date_str = details
 
-        if not category or ' ' in category or '.' in category or ',' in category:
+        if not category or " " in category or "." in category or "," in category:
             print(UNKNOWN_COMMAND_MSG)
             return
 
@@ -143,7 +147,7 @@ class Handler:
             print(UNKNOWN_COMMAND_MSG)
             return
 
-        formatted_date = '-'.join(map(str, date_tuple))
+        formatted_date = "-".join(map(str, date_tuple))
         self.data.add_cost(formatted_date, category, amount)
         print(OP_SUCCESS_MSG)
 
@@ -161,16 +165,16 @@ class Handler:
 
         day, month, year = date_tuple
         print(f"Ваша статистика по состоянию на {day:02d}-{month:02d}-{year}:")
-        print(f"Суммарный капитал: {stats['capital']:.2f} рублей")
+        print(f"Суммарный капитал: {stats["capital"]:.2f} рублей")
 
-        profit = stats['monthly_income'] - stats['monthly_expenses']
+        profit = stats["monthly_income"] - stats["monthly_expenses"]
         if profit >= 0:
             print(f"В этом месяце прибыль составила {profit:.2f} рублей")
         else:
             print(f"В этом месяце убыток составил {abs(profit):.2f} рублей")
 
-        print(f"Доходы: {stats['monthly_income']:.2f} рублей")
-        print(f"Расходы: {stats['monthly_expenses']:.2f} рублей")
+        print(f"Доходы: {stats["monthly_income"]:.2f} рублей")
+        print(f"Расходы: {stats["monthly_expenses"]:.2f} рублей")
         print()
         print("Детализация (категория: сумма):")
 
@@ -203,7 +207,7 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     """
     try:
         parts = maybe_dt.split("-")
-        if len(parts) != 3:
+        if len(parts) != DATE_PARTS_COUNT:
             print(INCORRECT_DATE_MSG)
             return None
 
