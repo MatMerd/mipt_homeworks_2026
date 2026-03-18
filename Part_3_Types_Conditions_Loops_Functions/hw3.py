@@ -4,12 +4,14 @@ UNKNOWN_COMMAND_MSG = "Unknown command!"
 NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
 INCORRECT_DATE_MSG = "Invalid date!"
 OP_SUCCESS_MSG = "Added"
-
+EXPECTED_ARGS_COUNT = 2
+MIN_MONTH = 1
+MAX_MONTH = 12
 
 class Data:
     def __init__(self):
-        self._cost = dict()
-        self._income = dict()
+        self._cost = {}
+        self._income = {}
 
     def add_income(self, date: str, amount: float):
         if date not in self._income:
@@ -32,7 +34,7 @@ class Data:
         monthly_costs_by_category = {}
 
         for date_str, amount in self._income.items():
-            day, month, year = map(int, date_str.split('-'))
+            day, month, year = map(int, date_str.split("-"))
             if (year < target_year or
                     (year == target_year and month < target_month) or
                     (year == target_year and month == target_month and day <= target_day)):
@@ -41,7 +43,7 @@ class Data:
                     monthly_income += amount
 
         for date_str, categories in self._cost.items():
-            day, month, year = map(int, date_str.split('-'))
+            day, month, year = map(int, date_str.split("-"))
             if (year < target_year or
                     (year == target_year and month < target_month) or
                     (year == target_year and month == target_month and day <= target_day)):
@@ -57,10 +59,10 @@ class Data:
                         monthly_costs_by_category[category] += cat_amount
 
         return {
-            'capital': total_capital,
-            'monthly_income': monthly_income,
-            'monthly_expenses': monthly_expenses,
-            'categories': monthly_costs_by_category
+            "capital": total_capital,
+            "monthly_income": monthly_income,
+            "monthly_expenses": monthly_expenses,
+            "categories": monthly_costs_by_category
         }
 
 
@@ -80,7 +82,7 @@ class Handler:
                 break
 
     def _parse_float(self, value: str) -> float:
-        return float(value.replace(',', '.'))
+        return float(value.replace(",", "."))
 
     def handler(self, command: str, details: list):
         match command:
@@ -172,8 +174,8 @@ class Handler:
         print()
         print("Детализация (категория: сумма):")
 
-        if stats['categories']:
-            sorted_categories = sorted(stats['categories'].items())
+        if stats["categories"]:
+            sorted_categories = sorted(stats["categories"].items())
             for i, (category, amount) in enumerate(sorted_categories, 1):
                 print(f"{i}. {category}: {amount:.2f}")
         else:
@@ -200,21 +202,21 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     :rtype: tuple[int, int, int] | None
     """
     try:
-        parts = maybe_dt.split('-')
+        parts = maybe_dt.split("-")
         if len(parts) != 3:
             print(INCORRECT_DATE_MSG)
             return None
 
         day, month, year = map(int, parts)
 
-        if not (1 <= month <= 12):
+        if not (MIN_MONTH <= month <= MAX_MONTH):
             print(INCORRECT_DATE_MSG)
             return None
 
         days_in_month = [31, 29 if is_leap_year(year) else 28, 31, 30, 31, 30,
                          31, 31, 30, 31, 30, 31]
 
-        if not (1 <= day <= days_in_month[month - 1]):
+        if not (MIN_MONTH <= day <= days_in_month[month - 1]):
             print(INCORRECT_DATE_MSG)
             return None
 
