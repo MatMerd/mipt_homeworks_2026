@@ -169,9 +169,9 @@ class Handler:
 
         profit = stats["monthly_income"] - stats["monthly_expenses"]
         if profit >= 0:
-            print(f"В этом месяце прибыль составила {profit:.2f} рублей")
+            print(f"Месячная прибыль составила {profit:.2f} рублей")
         else:
-            print(f"В этом месяце убыток составил {abs(profit):.2f} рублей")
+            print(f"Месячный убыток составил {abs(profit):.2f} рублей")
 
         print(f"Доходы: {stats["monthly_income"]:.2f} рублей")
         print(f"Расходы: {stats["monthly_expenses"]:.2f} рублей")
