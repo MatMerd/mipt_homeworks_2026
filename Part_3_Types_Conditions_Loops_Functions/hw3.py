@@ -6,6 +6,7 @@ INCORRECT_DATE_MSG = "Invalid date!"
 OP_SUCCESS_MSG = "Added"
 NUMBER_OF_DATE_PARTS = 3
 DATE_SEP = "-"
+FEBRUARY = 2
 CategoryStat = tuple[str, float]
 CategoryStats = list[CategoryStat]
 StatsResult = tuple[float, float, float, CategoryStats]
@@ -63,7 +64,7 @@ def check_date_bounds(day: int, month: int, year: int) -> bool:
         return False
 
     max_day = DAYS_IN_MONTH[month - 1]
-    if month == 2 and is_leap_year(year):
+    if month == FEBRUARY and is_leap_year(year):
         max_day = 29
 
     return 1 <= day <= max_day
@@ -125,9 +126,6 @@ def is_not_later(first_date: str, second_date: str) -> bool:
     year_check = check_year_bonds(first[2], second[2])
     if year_check is not None:
         return year_check
-
-    # first_day, first_month, first_year = first
-    # second_day, second_month, second_year = second
 
     if check_year_bonds is not None:
         return check_year_bonds(first[2], second[2])
