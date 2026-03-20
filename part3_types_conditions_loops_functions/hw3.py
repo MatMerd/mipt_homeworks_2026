@@ -69,7 +69,7 @@ def cost_operation(category_name: str, amount: float, date: str) -> str:
     return NOT_EXISTS_CATEGORY
 
 
-def cost_get_categories(categories: str):
+def cost_get_categories(categories: str) -> str:
     if categories == "categories":
         return cost_categories_handler()
     return UNKNOWN_COMMAND_MSG
@@ -195,7 +195,7 @@ def date_validation(day: int, month: int, year: int) -> bool:
     return day <= MAX_DAY_IN_THIRTY_ONE_DAY_MONTH
 
 
-def categories_validate(category_name: str):
+def categories_validate(category_name: str) -> bool:
     category_path = category_name.split("::")
     return (len(category_path) == LEN_CATEGORY_PATH and
         category_path[0] in EXPENSE_CATEGORIES and
@@ -228,7 +228,7 @@ def process_income(input_line: list[str]) -> str:
 def process_cost(input_line: list[str]) -> Any:
     if len(input_line) == COST_ARGS_TO_OPERATE:
         return cost_operation(input_line[1], float(input_line[2]), input_line[3])
-    elif len(input_line) == COST_ARGS_TO_GET_CATEGORIES:
+    if len(input_line) == COST_ARGS_TO_GET_CATEGORIES:
         return cost_get_categories(input_line[1])
     return UNKNOWN_COMMAND_MSG
 
