@@ -131,7 +131,7 @@ def print_month_profit(tuple_date: DataTuple) -> str:
 def count_capital(tuple_date: DataTuple) -> float:
     total_income = float(0)
     for transaction in financial_transactions_storage:
-        dt = extract_data(transaction["date"])
+        dt = get_tuple_date(transaction["date"])
         if compare_date(tuple_date, dt):
             if "category" in transaction:
                 total_income -= transaction["amount"]
@@ -143,7 +143,7 @@ def count_capital(tuple_date: DataTuple) -> float:
 def count_monthly_income(tuple_date: DataTuple) -> float:
     monthly_income = float(0)
     for transaction in financial_transactions_storage:
-        dt = extract_data(transaction["date"])
+        dt = get_tuple_date(transaction["date"])
         if "category" not in transaction:
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
                 monthly_income += transaction["amount"]
@@ -153,7 +153,7 @@ def count_monthly_income(tuple_date: DataTuple) -> float:
 def count_monthly_expense(tuple_date: DataTuple) -> float:
     monthly_expense = float(0)
     for transaction in financial_transactions_storage:
-        dt = extract_data(transaction["date"])
+        dt = get_tuple_date(transaction["date"])
         if "category" in transaction:
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
                 monthly_expense += transaction["amount"]
@@ -164,7 +164,7 @@ def count_categories(tuple_date: DataTuple) -> dict[str, float]:
     categories: dict[str, float] = {}
     for transaction in financial_transactions_storage:
         if "category" in transaction:
-            dt = extract_data(transaction["date"])
+            dt = get_tuple_date(transaction["date"])
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
                 if transaction["category"] not in categories:
                     categories[transaction["category"]] = float(0)
@@ -274,10 +274,15 @@ def cost_categories_handler() -> str:
 
 def extract_data(maybe_dt: str) -> DataTuple | None:
     if len(maybe_dt) == DATE_LENGTH and maybe_dt.count("-"):
-        day, month, year = map(int, maybe_dt.split("-"))
-        if date_validation(day, month, year):
-            return (day, month, year)
+        tuple_date = get_tuple_date(maybe_dt)
+        if date_validation(tuple_date[0], tuple_date[1], tuple_date[2]):
+            return tuple_date
     return None
+
+
+def get_tuple_date(date: str) -> DataTuple:
+    day, month, year = map(int, date.split("-"))
+    return (day, month, year)
 
 
 if __name__ == "__main__":
