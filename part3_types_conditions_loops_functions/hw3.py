@@ -172,8 +172,9 @@ def count_categories(tuple_date: DataTuple) -> dict[str, float]:
         if CATEGORY_KEY in transaction:
             dt = get_tuple_date(transaction[DATE_KEY])
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
-                cat = transaction[CATEGORY_KEY]
-                categories[cat] = categories.get(cat, float(0)) + transaction[AMOUNT_KEY]
+                cat = transaction.get(DATE_KEY, "")
+                amount = transaction[AMOUNT_KEY]
+                categories[cat] = categories.get(cat, float(0)) + amount
     return dict(sorted(categories.items()))
 
 
