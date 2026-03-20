@@ -21,13 +21,13 @@ COST_ARGS_TO_OPERATE = 4
 COST_ARGS_TO_GET_CATEGORIES = 2
 STATS_ARGS = 2
 LEN_CATEGORY_PATH = 2
-STATS_PRINT = '''Your statistics as of {}:
+STATS_PRINT = """Your statistics as of {}:
 Total capital: {} rubles
 This month, {} amounted to {} rubles.
 Income: {} rubles
 Expenses: {} rubles
 
-Details (category: amount):'''
+Details (category: amount):"""
 
 UNKNOWN_COMMAND_MSG = "Unknown command!"
 NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
@@ -101,7 +101,7 @@ def stats(date: str) -> str:
 
 def print_categories(tuple_date: DataTuple) -> str:
     categories = count_categories(tuple_date)
-    categories_print: str = str()
+    categories_print: str = ""
     if categories:
         for idx, (cat, amount) in enumerate(categories.items(), start=1):
             categories_print += f"\n{idx}. {cat}: {amount:.0f}"
@@ -111,7 +111,7 @@ def print_categories(tuple_date: DataTuple) -> str:
 def print_capital(tuple_date: DataTuple) -> str:
     capital = count_capital(tuple_date)
     return f"{capital:.2f}"
-    
+
 
 def print_month_expense(tuple_date: DataTuple) -> str:
     month_expense = count_monthly_expense(tuple_date)
@@ -144,9 +144,8 @@ def count_monthly_income(tuple_date: DataTuple) -> float:
     monthly_income = float(0)
     for transaction in financial_transactions_storage:
         dt = get_tuple_date(transaction["date"])
-        if "category" not in transaction:
-            if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
-                monthly_income += transaction["amount"]
+        if "category" not in transaction and compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
+            monthly_income += transaction["amount"]
     return monthly_income
 
 
@@ -154,9 +153,8 @@ def count_monthly_expense(tuple_date: DataTuple) -> float:
     monthly_expense = float(0)
     for transaction in financial_transactions_storage:
         dt = get_tuple_date(transaction["date"])
-        if "category" in transaction:
-            if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
-                monthly_expense += transaction["amount"]
+        if "category" in transaction and compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
+            monthly_expense += transaction["amount"]
     return monthly_expense
 
 
@@ -199,10 +197,9 @@ def date_validation(day: int, month: int, year: int) -> bool:
 
 def categories_validate(category_name: str):
     category_path = category_name.split("::")
-    if category_path[0] in EXPENSE_CATEGORIES:
-        if category_path[1] in EXPENSE_CATEGORIES[category_path[0]] and len(category_path) == LEN_CATEGORY_PATH:
-            return True
-    return False
+    return (len(category_path) == LEN_CATEGORY_PATH and
+        category_path[0] in EXPENSE_CATEGORIES and
+        category_path[1] in EXPENSE_CATEGORIES[category_path[0]])
 
 
 def main() -> None:
@@ -225,8 +222,7 @@ def main() -> None:
 def process_income(input_line: list[str]) -> str:
     if len(input_line) == INCOME_ARGS:
         return income(float(input_line[1]), input_line[2])
-    else:
-        return UNKNOWN_COMMAND_MSG
+    return UNKNOWN_COMMAND_MSG
 
 
 def process_cost(input_line: list[str]) -> Any:
@@ -234,15 +230,13 @@ def process_cost(input_line: list[str]) -> Any:
         return cost_operation(input_line[1], float(input_line[2]), input_line[3])
     elif len(input_line) == COST_ARGS_TO_GET_CATEGORIES:
         return cost_get_categories(input_line[1])
-    else:
-        return UNKNOWN_COMMAND_MSG
-        
+    return UNKNOWN_COMMAND_MSG
+
 
 def process_stats(input_line: list[str]) -> str:
     if len(input_line) == STATS_ARGS:
         return stats(input_line[1])
-    else:
-        return UNKNOWN_COMMAND_MSG
+    return UNKNOWN_COMMAND_MSG
 
 
 def is_leap_year(year: int) -> bool:
@@ -267,8 +261,7 @@ def cost_categories_handler() -> str:
     lines: list[str] = []
     for main_cat, sub_cats in EXPENSE_CATEGORIES.items():
         if sub_cats:
-            for sub_cat in sub_cats:
-                lines.append(f"{main_cat}::{sub_cat}")
+            lines.extend(f"{main_cat}::{sub_cat}" for sub_cat in sub_cats)
     return "\n".join(lines)
 
 
