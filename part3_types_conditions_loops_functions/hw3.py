@@ -96,11 +96,11 @@ def parse_amount(amount_str: str) -> float | None:
 def get_all_categories() -> list[str]:
     """
     Возвращает список всех доступных категорий в формате common_category::target_category
-    Сортировка по common_category, затем по target_category
+    В порядке определения в словаре EXPENSE_CATEGORIES
     """
     categories = []
-    # Сортируем ключи для правильного порядка вывода
-    for common in sorted(EXPENSE_CATEGORIES.keys()):
+    # Перебираем ключи в том порядке, как они определены в словаре
+    for common in EXPENSE_CATEGORIES.keys():
         targets = EXPENSE_CATEGORIES[common]
         if targets:
             # Сортируем подкатегории
@@ -136,7 +136,7 @@ def income_handler(amount: float, income_date: str) -> str:
     financial_transactions_storage.append({
         "type": "income",
         "amount": amount,
-        "date": date_tuple,  # Сохраняем как кортеж, а не строку
+        "date": date_tuple,
         "date_str": income_date
     })
     return OP_SUCCESS_MSG
@@ -161,7 +161,7 @@ def cost_handler(category_name: str, amount: float, cost_date: str) -> str:
         "type": "expense",
         "category": category_name,
         "amount": amount,
-        "date": date_tuple,  # Сохраняем как кортеж
+        "date": date_tuple,
         "date_str": cost_date
     })
     return OP_SUCCESS_MSG
@@ -276,9 +276,7 @@ def stats_handler(report_date: str) -> str:
         result += "Details (category: amount):\n"
         sorted_categories = sorted(expenses_by_cat.items())
         for idx, (cat, amount) in enumerate(sorted_categories, 1):
-            # Извлекаем только target_category для отображения
             display_cat = cat.split('::')[-1] if '::' in cat else cat
-            # Форматируем сумму без десятичных знаков, если это целое число
             if amount == int(amount):
                 result += f"{idx}. {display_cat}: {int(amount)}\n"
             else:
