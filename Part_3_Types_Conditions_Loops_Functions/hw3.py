@@ -1,15 +1,15 @@
 #!/usr/bin/env python
-UNKNOWN_COMMAND_MSG = "Неизвестная команда!"
-NONPOSITIVE_VALUE_MSG = "Значение должно быть больше нуля!"
-INCORRECT_DATE_MSG = "Неправильная дата!"
-OP_SUCCESS_MSG = "Добавлено"
-STATS_HEADER_PREFIX = "Ваша статистика по состоянию на"
-TOTAL_CAPITAL_LABEL = "Суммарный капитал"
-MONTH_PROFIT_PREFIX = "\u0412 этом месяце прибыль составила"
-MONTH_LOSS_PREFIX = "\u0412 этом месяце убыток составил"
-INCOME_LABEL = "Доходы"
-COST_LABEL = "Расходы"
-RUBLES_LABEL = "рублей"
+UNKNOWN_COMMAND_MSG = "Unknown command!"
+NONPOSITIVE_VALUE_MSG = "The value must be greater than zero!"
+INCORRECT_DATE_MSG = "Incorrect date!"
+OP_SUCCESS_MSG = "Added"
+STATS_HEADER_PREFIX = "Your statistics as of"
+TOTAL_CAPITAL_LABEL = "Total capital"
+MONTH_PROFIT_PREFIX = "This month profit is"
+MONTH_LOSS_PREFIX = "This month loss is"
+INCOME_LABEL = "Income"
+COST_LABEL = "Expenses"
+RUBLES_LABEL = "rubles"
 
 DAY_PART_LEN = 2
 YEAR_PART_LEN = 4
@@ -41,10 +41,10 @@ def output(message: str = "") -> None:
 
 def is_leap_year(year: int) -> bool:
     """
-    Для заданного года определяет: високосный (True) или невисокосный (False).
+    Determine whether a year is leap (True) or non-leap (False).
 
-    :param int year: Проверяемый год
-    :return: Значение високосности.
+    :param int year: Year to validate
+    :return: Leap-year flag.
     :rtype: bool
     """
     if year % 4 == 0 and year % 100 != 0:
@@ -223,7 +223,7 @@ def format_detail_value(value: float) -> str:
 
 
 def print_details(details: StatsDetails) -> None:
-    output("Детализация (категория: сумма):")
+    output("Breakdown (category: amount):")
     for index, category in enumerate(sorted(details), start=1):
         value_text = format_detail_value(details[category])
         output(f"{index}. {category}: {value_text}")
@@ -351,7 +351,7 @@ def process_line(line: str, incomes: IncomeHistory, costs: CostHistory) -> None:
 
 
 def main() -> None:
-    """Ваш код здесь"""
+    """Entry point."""
     incomes: IncomeHistory = []
     costs: CostHistory = {}
 
