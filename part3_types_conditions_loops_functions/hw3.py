@@ -90,7 +90,9 @@ def stats(date: str) -> str:
                                         print_month_income(tuple_date),
                                         print_month_expense(tuple_date)
                                         )
-            return result + print_categories(tuple_date)
+            lines = [result]
+            lines.extend(print_categories(tuple_date))
+            return "\n".join(lines)
         result = STATS_PRINT.format(date,
                                     print_capital(tuple_date),
                                     "the loss",
@@ -98,16 +100,19 @@ def stats(date: str) -> str:
                                     print_month_income(tuple_date),
                                     print_month_expense(tuple_date)
                                     )
-        return result + print_categories(tuple_date)
+        lines = [result]
+        lines.extend(print_categories(tuple_date))
+        return "\n".join(lines)
     return INCORRECT_DATE_MSG
 
 
-def print_categories(tuple_date: DataTuple) -> str:
+def print_categories(tuple_date: DataTuple) -> list[str]:
     categories = count_categories(tuple_date)
-    categories_print: str = ""
+    categories_print: list[str] = []
     if categories:
-        for idx, (cat, amount) in enumerate(categories.items(), start=1):
-            categories_print += f"\n{idx}. {cat}: {amount:.0f}"
+        idx = 1
+        for cat, amount in categories.items():
+            categories_print.append(f"\n{idx}. {cat}: {amount:.0f}")
     return categories_print
 
 
@@ -168,7 +173,7 @@ def count_categories(tuple_date: DataTuple) -> dict[str, float]:
             dt = get_tuple_date(transaction[DATE_KEY])
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
                 cat = transaction[CATEGORY_KEY]
-                categories[cat] = categories.get(cat, 0.0) + transaction[AMOUNT_KEY]
+                categories[cat] = categories.get(cat, float(0)) + transaction[AMOUNT_KEY]
     return dict(sorted(categories.items()))
 
 
