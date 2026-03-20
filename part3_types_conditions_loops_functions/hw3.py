@@ -99,12 +99,11 @@ def get_all_categories() -> list[str]:
     В порядке определения в словаре EXPENSE_CATEGORIES
     """
     categories = []
-    # Перебираем ключи в том порядке, как они определены в словаре
     for common in EXPENSE_CATEGORIES.keys():
         targets = EXPENSE_CATEGORIES[common]
         if targets:
-            # Сортируем подкатегории
-            for target in sorted(targets):
+            # Сохраняем порядок из кортежа
+            for target in targets:
                 categories.append(f"{common}::{target}")
         else:
             categories.append(common)
