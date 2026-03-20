@@ -96,15 +96,19 @@ def parse_amount(amount_str: str) -> float | None:
 def get_all_categories() -> list[str]:
     """
     Возвращает список всех доступных категорий в формате common_category::target_category
+    Сортировка по common_category, затем по target_category
     """
     categories = []
-    for common, targets in EXPENSE_CATEGORIES.items():
+    # Сортируем ключи для правильного порядка вывода
+    for common in sorted(EXPENSE_CATEGORIES.keys()):
+        targets = EXPENSE_CATEGORIES[common]
         if targets:
-            for target in targets:
+            # Сортируем подкатегории
+            for target in sorted(targets):
                 categories.append(f"{common}::{target}")
         else:
             categories.append(common)
-    return sorted(categories)
+    return categories
 
 
 def validate_category(category_str: str) -> bool:
@@ -132,8 +136,8 @@ def income_handler(amount: float, income_date: str) -> str:
     financial_transactions_storage.append({
         "type": "income",
         "amount": amount,
-        "date": income_date,
-        "date_tuple": date_tuple
+        "date": date_tuple,  # Сохраняем как кортеж, а не строку
+        "date_str": income_date
     })
     return OP_SUCCESS_MSG
 
@@ -157,8 +161,8 @@ def cost_handler(category_name: str, amount: float, cost_date: str) -> str:
         "type": "expense",
         "category": category_name,
         "amount": amount,
-        "date": cost_date,
-        "date_tuple": date_tuple
+        "date": date_tuple,  # Сохраняем как кортеж
+        "date_str": cost_date
     })
     return OP_SUCCESS_MSG
 
@@ -179,7 +183,8 @@ def get_month_transactions(transactions: list, target_date: tuple[int, int, int]
     month_expenses = []
     
     for t in transactions:
-        if t["date_tuple"][1] == target_date[1] and t["date_tuple"][2] == target_date[2]:
+        t_day, t_month, t_year = t["date"]
+        if t_month == target_date[1] and t_year == target_date[2]:
             if t["type"] == "income":
                 month_incomes.append(t)
             else:
@@ -194,7 +199,7 @@ def get_all_transactions_until_date(transactions: list, target_date: tuple[int, 
     """
     result = []
     for t in transactions:
-        t_day, t_month, t_year = t["date_tuple"]
+        t_day, t_month, t_year = t["date"]
         target_day, target_month, target_year = target_date
         
         if t_year < target_year:
@@ -265,6 +270,7 @@ def stats_handler(report_date: str) -> str:
     result += f"Income: {total_income:.2f} rubles\n"
     result += f"Expenses: {total_expenses:.2f} rubles\n"
     
+    # Детализация по категориям
     expenses_by_cat = get_expenses_by_category(month_expenses)
     if expenses_by_cat:
         result += "Details (category: amount):\n"
@@ -272,7 +278,11 @@ def stats_handler(report_date: str) -> str:
         for idx, (cat, amount) in enumerate(sorted_categories, 1):
             # Извлекаем только target_category для отображения
             display_cat = cat.split('::')[-1] if '::' in cat else cat
-            result += f"{idx}. {display_cat}: {int(amount) if amount.is_integer() else amount}\n"
+            # Форматируем сумму без десятичных знаков, если это целое число
+            if amount == int(amount):
+                result += f"{idx}. {display_cat}: {int(amount)}\n"
+            else:
+                result += f"{idx}. {display_cat}: {amount}\n"
     else:
         result += "Details (category: amount):\n"
     
