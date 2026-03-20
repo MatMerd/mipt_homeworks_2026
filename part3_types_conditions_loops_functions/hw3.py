@@ -5,6 +5,9 @@ DataTuple = tuple[int, int, int]
 
 financial_transactions_storage: list[dict[str, Any]] = []
 
+DATE_KEY = "date"
+CATEGORY_KEY = "category"
+AMOUNT_KEY = "amount"
 LEN_DATE_LIST = 3
 MONTHS_THIRTY_DAYS = (4, 6, 9, 11)
 FEBRUARY = 2
@@ -131,42 +134,40 @@ def print_month_profit(tuple_date: DataTuple) -> str:
 def count_capital(tuple_date: DataTuple) -> float:
     total_income = float(0)
     for transaction in financial_transactions_storage:
-        dt = get_tuple_date(transaction["date"])
+        dt = get_tuple_date(transaction[DATE_KEY])
         if compare_date(tuple_date, dt):
-            if "category" in transaction:
-                total_income -= transaction["amount"]
+            if CATEGORY_KEY in transaction:
+                total_income -= transaction[AMOUNT_KEY]
             else:
-                total_income += transaction["amount"]
+                total_income += transaction[AMOUNT_KEY]
     return total_income
 
 
 def count_monthly_income(tuple_date: DataTuple) -> float:
     monthly_income = float(0)
     for transaction in financial_transactions_storage:
-        dt = get_tuple_date(transaction["date"])
-        if "category" not in transaction and compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
-            monthly_income += transaction["amount"]
+        dt = get_tuple_date(transaction[DATE_KEY])
+        if CATEGORY_KEY not in transaction and compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
+            monthly_income += transaction[AMOUNT_KEY]
     return monthly_income
 
 
 def count_monthly_expense(tuple_date: DataTuple) -> float:
     monthly_expense = float(0)
     for transaction in financial_transactions_storage:
-        dt = get_tuple_date(transaction["date"])
-        if "category" in transaction and compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
-            monthly_expense += transaction["amount"]
+        dt = get_tuple_date(transaction[DATE_KEY])
+        if CATEGORY_KEY in transaction and compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
+            monthly_expense += transaction[AMOUNT_KEY]
     return monthly_expense
 
 
 def count_categories(tuple_date: DataTuple) -> dict[str, float]:
     categories: dict[str, float] = {}
     for transaction in financial_transactions_storage:
-        if "category" in transaction:
-            dt = get_tuple_date(transaction["date"])
+        if CATEGORY_KEY in transaction:
+            dt = get_tuple_date(transaction[DATE_KEY])
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
-                if transaction["category"] not in categories:
-                    categories[transaction["category"]] = float(0)
-                categories[transaction["category"]] += transaction["amount"]
+                categories[transaction[CATEGORY_KEY]] = categories.get(transaction[CATEGORY_KEY], 0.0) + transaction[AMOUNT_KEY]
     return dict(sorted(categories.items()))
 
 
@@ -198,8 +199,8 @@ def date_validation(day: int, month: int, year: int) -> bool:
 def categories_validate(category_name: str) -> bool:
     category_path = category_name.split("::")
     return (len(category_path) == LEN_CATEGORY_PATH and
-        category_path[0] in EXPENSE_CATEGORIES and
-        category_path[1] in EXPENSE_CATEGORIES[category_path[0]])
+            category_path[0] in EXPENSE_CATEGORIES and
+            category_path[1] in EXPENSE_CATEGORIES[category_path[0]])
 
 
 def main() -> None:
@@ -248,12 +249,12 @@ def is_leap_year(year: int) -> bool:
 
 
 def income_handler(amount: float, income_date: str) -> str:
-    financial_transactions_storage.append({"amount": amount, "date": income_date})
+    financial_transactions_storage.append({AMOUNT_KEY: amount, DATE_KEY: income_date})
     return OP_SUCCESS_MSG
 
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
-    financial_transactions_storage.append({"category": category_name, "amount": amount, "date": income_date})
+    financial_transactions_storage.append({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: income_date})
     return OP_SUCCESS_MSG
 
 
