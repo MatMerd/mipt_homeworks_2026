@@ -223,16 +223,14 @@ def split_transactions() -> tuple[list, list]:
     return incomes, expenses
 
 
-def stats_handler(report_date: str) -> str:
+def calculate_stats(
+    target_date: tuple[int, int, int],
+    incomes: list,
+    expenses: list
+) -> tuple[float, float, float, dict]:
     """
-    Обработчик статистики.
+    Рассчитывает статистику: total_capital, month_income, month_expense, expense_by_category.
     """
-    target_date = extract_date(report_date)
-    if target_date is None:
-        return INCORRECT_DATE_MSG
-
-    incomes, expenses = split_transactions()
-
     total_capital = 0.0
     month_income = 0.0
     month_expense = 0.0
@@ -253,9 +251,21 @@ def stats_handler(report_date: str) -> str:
                 month_expense += amount
                 expense_by_category[category] = expense_by_category.get(category, 0.0) + amount
 
+    return total_capital, month_income, month_expense, expense_by_category
+
+
+def format_statistics(
+    report_date: str,
+    total_capital: float,
+    month_income: float,
+    month_expense: float,
+    expense_by_category: dict
+) -> str:
+    """
+    Форматирует статистику в строку.
+    """
     month_result = month_income - month_expense
 
-    # Формируем результат
     result = f"Your statistics as of {report_date}:\n"
     result += f"Total capital: {total_capital:.2f} rubles\n"
 
@@ -272,7 +282,6 @@ def stats_handler(report_date: str) -> str:
         result += "Details (category: amount):\n"
         sorted_categories = sorted(expense_by_category.items())
         for idx, (category, amount) in enumerate(sorted_categories, 1):
-            # Извлекаем только название подкатегории для отображения
             display_name = category.split("::")[-1] if "::" in category else category
             if amount == int(amount):
                 result += f"{idx}. {display_name}: {int(amount)}\n"
@@ -282,6 +291,71 @@ def stats_handler(report_date: str) -> str:
         result += "Details (category: amount):\n"
 
     return result.rstrip("\n")
+
+
+def stats_handler(report_date: str) -> str:
+    """
+    Обработчик статистики.
+    """
+    target_date = extract_date(report_date)
+    if target_date is None:
+        return INCORRECT_DATE_MSG
+
+    incomes, expenses = split_transactions()
+    total_capital, month_income, month_expense, expense_by_category = calculate_stats(
+        target_date, incomes, expenses
+    )
+
+    return format_statistics(
+        report_date, total_capital, month_income, month_expense, expense_by_category
+    )
+
+
+def handle_income_command(parts: list[str]) -> None:
+    """
+    Обрабатывает команду income.
+    """
+    if len(parts) != INCOME_ARGS_COUNT:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    amount = parse_amount(parts[1])
+    if amount is None:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    result = income_handler(amount, parts[2])
+    print(result)
+
+
+def handle_cost_command(parts: list[str]) -> None:
+    """
+    Обрабатывает команду cost.
+    """
+    if len(parts) == COST_CATEGORIES_ARGS_COUNT and parts[1].lower() == "categories":
+        print(cost_categories_handler())
+    elif len(parts) == COST_ARGS_COUNT:
+        amount = parse_amount(parts[2])
+        if amount is None:
+            print(UNKNOWN_COMMAND_MSG)
+            return
+
+        result = cost_handler(parts[1], amount, parts[3])
+        print(result)
+    else:
+        print(UNKNOWN_COMMAND_MSG)
+
+
+def handle_stats_command(parts: list[str]) -> None:
+    """
+    Обрабатывает команду stats.
+    """
+    if len(parts) != STATS_ARGS_COUNT:
+        print(UNKNOWN_COMMAND_MSG)
+        return
+
+    result = stats_handler(parts[1])
+    print(result)
 
 
 def main() -> None:
@@ -301,40 +375,11 @@ def main() -> None:
         command = parts[0].lower() if parts else ""
 
         if command == "income":
-            if len(parts) != INCOME_ARGS_COUNT:
-                print(UNKNOWN_COMMAND_MSG)
-                continue
-
-            amount = parse_amount(parts[1])
-            if amount is None:
-                print(UNKNOWN_COMMAND_MSG)
-                continue
-
-            result = income_handler(amount, parts[2])
-            print(result)
-
+            handle_income_command(parts)
         elif command == "cost":
-            if len(parts) == COST_CATEGORIES_ARGS_COUNT and parts[1].lower() == "categories":
-                print(cost_categories_handler())
-            elif len(parts) == COST_ARGS_COUNT:
-                amount = parse_amount(parts[2])
-                if amount is None:
-                    print(UNKNOWN_COMMAND_MSG)
-                    continue
-
-                result = cost_handler(parts[1], amount, parts[3])
-                print(result)
-            else:
-                print(UNKNOWN_COMMAND_MSG)
-
+            handle_cost_command(parts)
         elif command == "stats":
-            if len(parts) != STATS_ARGS_COUNT:
-                print(UNKNOWN_COMMAND_MSG)
-                continue
-
-            result = stats_handler(parts[1])
-            print(result)
-
+            handle_stats_command(parts)
         else:
             print(UNKNOWN_COMMAND_MSG)
 
