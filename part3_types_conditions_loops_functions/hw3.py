@@ -52,7 +52,7 @@ def income(amount: float, date: str) -> str:
     if amount > 0:
         tuple_date = extract_data(date)
         if tuple_date is not None:
-            return income_handler(amount, tuple_date)
+            return income_handler(amount, date)
         return INCORRECT_DATE_MSG
     return NONPOSITIVE_VALUE_MSG
 
@@ -63,7 +63,7 @@ def cost_operation(category_name: str, amount: float, date: str) -> str:
         if amount > 0:
             tuple_date = extract_data(date)
             if tuple_date is not None:
-                return cost_handler(category_path[1], amount, tuple_date)
+                return cost_handler(category_path[1], amount, date)
             return INCORRECT_DATE_MSG
         return NONPOSITIVE_VALUE_MSG
     return NOT_EXISTS_CATEGORY
@@ -131,7 +131,7 @@ def print_month_profit(tuple_date: DataTuple) -> str:
 def count_capital(tuple_date: DataTuple) -> float:
     total_income = float(0)
     for transaction in financial_transactions_storage:
-        dt = transaction["date"]
+        dt = extract_data(transaction["date"])
         if compare_date(tuple_date, dt):
             if "category" in transaction:
                 total_income -= transaction["amount"]
@@ -143,7 +143,7 @@ def count_capital(tuple_date: DataTuple) -> float:
 def count_monthly_income(tuple_date: DataTuple) -> float:
     monthly_income = float(0)
     for transaction in financial_transactions_storage:
-        dt = transaction["date"]
+        dt = extract_data(transaction["date"])
         if "category" not in transaction:
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
                 monthly_income += transaction["amount"]
@@ -153,7 +153,7 @@ def count_monthly_income(tuple_date: DataTuple) -> float:
 def count_monthly_expense(tuple_date: DataTuple) -> float:
     monthly_expense = float(0)
     for transaction in financial_transactions_storage:
-        dt = transaction["date"]
+        dt = extract_data(transaction["date"])
         if "category" in transaction:
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
                 monthly_expense += transaction["amount"]
@@ -164,7 +164,7 @@ def count_categories(tuple_date: DataTuple) -> dict[str, float]:
     categories: dict[str, float] = {}
     for transaction in financial_transactions_storage:
         if "category" in transaction:
-            dt = transaction["date"]
+            dt = extract_data(transaction["date"])
             if compare_date(tuple_date, dt) and is_same_month(tuple_date, dt):
                 if transaction["category"] not in categories:
                     categories[transaction["category"]] = float(0)
@@ -253,12 +253,12 @@ def is_leap_year(year: int) -> bool:
     return year % 4 == 0
 
 
-def income_handler(amount: float, income_date: DataTuple) -> str:
+def income_handler(amount: float, income_date: str) -> str:
     financial_transactions_storage.append({"amount": amount, "date": income_date})
     return OP_SUCCESS_MSG
 
 
-def cost_handler(category_name: str, amount: float, income_date: DataTuple) -> str:
+def cost_handler(category_name: str, amount: float, income_date: str) -> str:
     financial_transactions_storage.append({"category": category_name, "amount": amount, "date": income_date})
     return OP_SUCCESS_MSG
 
@@ -269,7 +269,7 @@ def cost_categories_handler() -> str:
         if sub_cats:
             for sub_cat in sub_cats:
                 lines.append(f"{main_cat}::{sub_cat}")
-    return "\n".join(EXPENSE_CATEGORIES)
+    return "\n".join(lines)
 
 
 def extract_data(maybe_dt: str) -> DataTuple | None:
