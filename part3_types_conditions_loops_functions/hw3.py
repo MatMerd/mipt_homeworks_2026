@@ -134,21 +134,15 @@ def get_all_categories():
 
 
 def is_before_or_on(trans_date, target_date):
-    ty, tm, td = trans_date
-    tgy, tgm, tgd = target_date
-    if ty < tgy:
-        return True
-    if ty > tgy:
-        return False
-    if tm < tgm:
-        return True
-    if tm > tgm:
-        return False
-    return td <= tgd
+    if trans_date[2] != target_date[2]:
+        return trans_date[2] < target_date[2]
+    if trans_date[1] != target_date[1]:
+        return trans_date[1] < target_date[1]
+    return trans_date[0] <= target_date[0]
 
 
 def is_same_month_year(date1, date2):
-    return (date1[1], date1[2]) == (date2[1], date2[2])
+    return date1[1] == date2[1] and date1[2] == date2[2]
 
 
 def calculate_income(target):
@@ -191,10 +185,7 @@ def make_up_statistics(date):
 
 
 def print_stats(stats, date):
-    capital = stats[0]
-    income = stats[1]
-    expenses_total = stats[2]
-    categories = stats[3]
+    capital, income, expenses_total, categories = stats
 
     print(f"Your statistics as of {date}:")
     print(f"Total capital: {capital:.2f} rubles")
@@ -215,8 +206,7 @@ def print_stats(stats, date):
         print()
         return
 
-    items = sorted(categories.items())
-    for idx, (category, amount) in enumerate(items, 1):
+    for idx, (category, amount) in enumerate(sorted(categories.items()), 1):
         print(f"{idx}. {category}: {int(amount):,}")
 
 
@@ -240,7 +230,8 @@ def income_handler(amount, income_date):
 def cost_handler(category_name, amount, income_date):
     category_parts = validate_category(category_name)
     if category_parts is None:
-        return NOT_EXISTS_CATEGORY + "\n" + get_all_categories()
+        error_msg = f"{NOT_EXISTS_CATEGORY}\n{get_all_categories()}"
+        return error_msg
 
     amount_parsed = parse_amount(str(amount))
     if not valid_amount(amount_parsed):
@@ -268,8 +259,7 @@ def stats_handler(report_date):
     if not valid_date(date):
         return INCORRECT_DATE_MSG
 
-    stats = make_up_statistics(date)
-    capital, income, expenses_total, categories = stats
+    capital, income, expenses_total, categories = make_up_statistics(date)
 
     lines = [
         f"Your statistics as of {report_date}:",
@@ -280,7 +270,8 @@ def stats_handler(report_date):
     if delta > 0:
         lines.append(f"This month, the profit amounted to {delta:.2f} rubles.")
     else:
-        lines.append(f"This month, the loss amounted to {-delta:.2f} rubles.")
+        delta *= -1
+        lines.append(f"This month, the loss amounted to {delta:.2f} rubles.")
 
     lines.append(f"Income: {income:.2f} rubles")
     lines.append(f"Expenses: {expenses_total:.2f} rubles")
