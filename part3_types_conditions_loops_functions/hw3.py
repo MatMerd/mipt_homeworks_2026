@@ -117,7 +117,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
 
 
 def format_categories() -> str:
-    lines = []
+    lines: list = []
     for common, targets in EXPENSE_CATEGORIES.items():
         lines.extend(f"{common}::{target}" for target in targets)
     return "\n".join(lines)
@@ -222,23 +222,23 @@ def _format_statistics(
 
 def income_handler(amount: float, income_date: str) -> str:
     valid, error = _validate_income(amount, income_date)
-    if not valid:
-        return error
     date_tuple = extract_date(income_date)
     financial_transactions_storage.append(
         {"amount": amount, "date": date_tuple}
     )
+    if not valid:
+        return error
     return OP_SUCCESS_MSG
 
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
     valid, error = _validate_cost(category_name, amount, income_date)
-    if not valid:
-        return error
     date_tuple = extract_date(income_date)
     financial_transactions_storage.append(
         {"category": category_name, "amount": amount, "date": date_tuple}
     )
+    if not valid:
+        return error
     return OP_SUCCESS_MSG
 
 
