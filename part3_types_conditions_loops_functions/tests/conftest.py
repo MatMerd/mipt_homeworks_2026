@@ -1,6 +1,8 @@
-from collections.abc import Generator
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from collections import defaultdict
+from collections.abc import Callable, Generator
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
+from math import cos
 from typing import NotRequired, Protocol, TypedDict, TypeVar, Unpack
 
 import pytest
@@ -11,6 +13,33 @@ from polyfactory.pytest_plugin import register_fixture
 from part3_types_conditions_loops_functions import hw3
 
 DATE_FORMAT = "%d-%m-%Y"
+STATS_TEMPLATE = """Your statistics as of {stats_date}:
+Total capital: {total_capital} rubles
+This month, the {amount_word} amounted to {total_capital} rubles.
+Income: {costs_amount} rubles
+Expenses: {incomes_amount} rubles
+
+Details (category: amount):
+{category_details_stat}
+"""
+
+
+def pytest_addoption(parser) -> None:  # type: ignore[no-untyped-def]
+    parser.addoption("--run-optional", action="store_true", default=False, help="run optional tests")
+
+
+def pytest_configure(config) -> None:  # type: ignore[no-untyped-def]
+    config.addinivalue_line("markers", "optional: mark test as optional to run")
+
+
+def pytest_collection_modifyitems(config, items) -> None:  # type: ignore[no-untyped-def]
+    if config.getoption("--run-optional"):
+        # --run-optional given in cli: do not skip slow tests
+        return
+    skip_optional = pytest.mark.skip(reason="need --run-optional option to run")
+    for item in items:
+        if "optional" in item.keywords:
+            item.add_marker(skip_optional)
 
 
 def parse_date(raw_date: str) -> tuple[int, int, int]:
@@ -46,13 +75,11 @@ S_co = TypeVar("S_co", covariant=True)
 
 
 class IncomeBuilder[S_co](Protocol):
-    def __call__(self, **kwargs: Unpack[IncomeKwargs]) -> S_co:
-        ...
+    def __call__(self, **kwargs: Unpack[IncomeKwargs]) -> S_co: ...
 
 
 class CostBuilder[S_co](Protocol):
-    def __call__(self, **kwargs: Unpack[CostKwargs]) -> S_co:
-        ...
+    def __call__(self, **kwargs: Unpack[CostKwargs]) -> S_co: ...
 
 
 @register_fixture
@@ -119,3 +146,70 @@ def invalid_cost_factory(cost_factory: type[CostFactory]) -> CostBuilder[Cost]:
         return cost_factory.build(**kwargs)
 
     return builder
+
+
+@pytest.fixture
+def incomes_batch(income_factory: type[IncomeFactory]) -> Generator[list[Income]]:
+    yield income_factory.batch(3)
+
+
+@pytest.fixture
+def costs_batch(cost_factory: type[CostFactory]) -> Generator[list[Cost]]:
+    yield cost_factory.batch(3)
+
+
+@pytest.fixture
+def fill_financial_storage_date(incomes_batch: list[Income], costs_batch: list[Cost]) -> datetime:
+    base_date = datetime.now(UTC) - timedelta(days=3)
+
+    for i in range(len(incomes_batch)):
+        income = incomes_batch[i]
+        cost = costs_batch[i]
+        str_date = base_date.strftime(DATE_FORMAT)
+        income.date = str_date
+        cost.date = str_date
+        hw3.financial_transactions_storage.extend((asdict(income), asdict(cost)))
+        base_date += timedelta(days=1)
+    return base_date
+
+
+@pytest.fixture
+def assert_stats_result(incomes_batch: list[Income], costs_batch: list[Cost]) -> Callable[..., None]:
+    def inner_assert(stats_result: str, stats_date: datetime) -> None:
+        costs_amount = round(
+            sum(
+                cost.amount
+                for cost in costs_batch
+                if datetime.strptime(cost.date, DATE_FORMAT).replace(tzinfo=UTC) < stats_date
+            ),
+            2,
+        )
+        incomes_amount = round(
+            sum(
+                income.amount
+                for income in incomes_batch
+                if datetime.strptime(income.date, DATE_FORMAT).replace(tzinfo=UTC) < stats_date
+            ),
+            2,
+        )
+        total_capital = round(costs_amount - incomes_amount, 2)
+        category_details: defaultdict[str, float] = defaultdict(float)
+        for cost in costs_batch:
+            category_details[cost.category] += cost.amount
+        category_details_stat = "\n".join(
+            f"{i}. {category}: {cost}" for i, (category, cost) in enumerate(category_details.items(), 1)
+        )
+        amount_word = "loss" if total_capital < 0 else "profit"
+        stats = STATS_TEMPLATE.format_map(
+            {
+                "stats_date": stats_date.strftime(DATE_FORMAT),
+                "total_capital": total_capital,
+                "amount_word": amount_word,
+                "costs_amount": costs_amount,
+                "incomes_amount": incomes_amount,
+                "category_details_stat": category_details_stat,
+            }
+        )
+        assert stats == stats_result
+
+    return inner_assert
