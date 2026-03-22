@@ -88,16 +88,12 @@ def parse_amount(raw: str):
 
 def is_not_later(d1, d2) -> bool:
     """Compares two dates."""
-    date_one = (d1[2], d1[1], d1[0])
-    date_two = (d2[2], d2[1], d2[0])
-    return date_one <= date_two
+    return (d1[2], d1[1], d1[0]) <= (d2[2], d2[1], d2[0])
 
 
 def is_same_month(d1, d2) -> bool:
     """Checks if month and year match."""
-    same_m = d1[1] == d2[1]
-    same_y = d1[2] == d2[2]
-    return same_m and same_y
+    return d1[1] == d2[1] and d1[2] == d2[2]
 
 
 def handle_income(incomes, amt_str, dt_str):
@@ -151,9 +147,9 @@ def format_val(amt):
     return f"{amt:.10f}".rstrip("0").rstrip(".")
 
 
-def build_lines(date_str, caps):
+def build_lines(date_str, t_cap, monthly_data):
     """Creates output lines to reduce complexity."""
-    t_cap, m_inc, m_cost, m_res, res_msg = caps
+    m_inc, m_cost, m_res, res_msg = monthly_data
     return [
         f"Ваша статистика по состоянию на {date_str}:",
         f"Суммарный капитал: {t_cap:.2f} рублей",
@@ -164,38 +160,54 @@ def build_lines(date_str, caps):
     ]
 
 
+def get_totals(incomes, costs, s_dt):
+    """Calculates total income and costs separately to reduce complexity."""
+    t_inc = 0
+    for a, ds in incomes:
+        d = extract_date(ds)
+        if d and is_not_later(d, s_dt):
+            t_inc += a
+    t_cost = 0
+    for _, a, d in costs:
+        if is_not_later(d, s_dt):
+            t_cost += a
+    return t_inc, t_cost
+
+
 def show_stats(incomes, costs, date_str):
     """Shows statistics."""
     s_dt = extract_date(date_str)
     if not s_dt:
         return INCORRECT_DATE_MSG
-    t_inc = sum(a for a, ds in incomes if (d := extract_date(ds)) and is_not_later(d, s_dt))
-    t_cost = sum(a for _, a, d in costs if is_not_later(d, s_dt))
+    t_inc, t_cost = get_totals(incomes, costs, s_dt)
     m_inc, m_cost, cats = get_month_stats(incomes, costs, s_dt)
     res_msg = "прибыль составила" if m_inc >= m_cost else "убыток составил"
-    m_res = abs(m_inc - m_cost)
-    lines = build_lines(date_str, (t_inc - t_cost, m_inc, m_cost, m_res, res_msg))
+    m_data = (m_inc, m_cost, abs(m_inc - m_cost), res_msg)
+    lines = build_lines(date_str, t_inc - t_cost, m_data)
     for i, name in enumerate(sorted(cats), 1):
         lines.append(f"{i}. {name}: {format_val(cats[name])}")
     return "\n".join(lines)
 
 
+def run_command(p, inc, cos):
+    """Executes a single command."""
+    if p[0] == "income" and len(p) == INCOME_CMD_LEN:
+        return handle_income(inc, p[1], p[2])
+    if p[0] == "cost" and len(p) == COST_CMD_LEN:
+        return handle_cost(cos, p[1], p[2], p[3])
+    if p[0] == "stats" and len(p) == STATS_CMD_LEN:
+        return show_stats(inc, cos, p[1])
+    return UNKNOWN_COMMAND_MSG
+
+
 def main():
-    """Main function."""
+    """Main entry point."""
     inc, cos = [], []
     for line in sys.stdin:
         raw = line.strip()
         if not raw:
             break
-        p = raw.split()
-        if p[0] == "income" and len(p) == INCOME_CMD_LEN:
-            print(handle_income(inc, p[1], p[2]))
-        elif p[0] == "cost" and len(p) == COST_CMD_LEN:
-            print(handle_cost(cos, p[1], p[2], p[3]))
-        elif p[0] == "stats" and len(p) == STATS_CMD_LEN:
-            print(show_stats(inc, cos, p[1]))
-        else:
-            print(UNKNOWN_COMMAND_MSG)
+        print(run_command(raw.split(), inc, cos))
 
 
 if __name__ == "__main__":
