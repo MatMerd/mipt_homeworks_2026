@@ -20,7 +20,7 @@ EXPENSE_CATEGORIES = {
     "Other": ("SomeCategory", "SomeOtherCategory"),
 }
 
-financial_transactions_storage: list[dict[str, Any]] = []
+financial_transactions_storage: list[Any] = []
 
 DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 MONTHS_IN_YEAR = 12
@@ -35,12 +35,12 @@ COST_CATEGORIES_PARTS_COUNT = 2
 
 
 def is_leap_year(year: int) -> bool:
-    divisible_by_100 = year % 100 == 0
-    divisible_by_4 = year % 4 == 0
-    divisible_by_400 = year % 400 == 0
-    if not divisible_by_4:
+    is_divisible_by_4 = year % 4 == 0
+    if not is_divisible_by_4:
         return False
-    return divisible_by_100 == divisible_by_400
+    is_divisible_by_100 = year % 100 == 0
+    is_divisible_by_400 = year % 400 == 0
+    return is_divisible_by_100 == is_divisible_by_400
 
 
 def get_days_in_month(year: int, month: int) -> int:
@@ -117,46 +117,31 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
 
 
 def format_categories() -> str:
-    lines: list[str] = []
-    for common, targets in EXPENSE_CATEGORIES.items():
-        lines.extend(f"{common}::{target}" for target in targets)
-    return "\n".join(lines)
+    return "\n".join(
+        f"{common}::{target}"
+        for common, targets in EXPENSE_CATEGORIES.items()
+        for target in targets
+    )
 
 
 def convert_date_to_int(date: tuple[int, int, int]) -> int:
-    return date[2] * 10000 + date[1] * 100 + date[0]
+    year_part = date[2] * 10000
+    month_part = date[1] * 100
+    return year_part + month_part + date[0]
 
 
 def is_date_in_month(date: tuple[int, int, int], year: int, month: int) -> bool:
     return date[1] == month and date[2] == year
 
 
-def _validate_income(amount: float, date_str: str) -> tuple[bool, str]:
-    if amount <= 0:
-        return False, NONPOSITIVE_VALUE_MSG
-    if extract_date(date_str) is None:
-        return False, INCORRECT_DATE_MSG
-    return True, ""
-
-
-def _validate_cost(
-    category_name: str, amount: float, date_str: str
-) -> tuple[bool, str]:
-    if amount <= 0:
-        return False, NONPOSITIVE_VALUE_MSG
-    if extract_date(date_str) is None:
-        return False, INCORRECT_DATE_MSG
-    if validate_category(category_name) is None:
-        return False, f"{NOT_EXISTS_CATEGORY}\n{format_categories()}"
-    return True, ""
-
-
 def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
     target_int = convert_date_to_int(target_date)
     total = 0.0
     for record in financial_transactions_storage:
+        if not isinstance(record, dict):
+            continue
         record_date = record.get("date")
-        if not record_date:
+        if record_date is None:
             continue
         if convert_date_to_int(record_date) <= target_int:
             amount = record.get("amount", 0.0)
@@ -167,15 +152,15 @@ def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
     return total
 
 
-def _calculate_month_income_expenses(
-    target_date: tuple[int, int, int]
+def _get_month_amounts_and_categories(
+    year: int, month: int
 ) -> tuple[float, float, dict[str, float]]:
-    year = target_date[2]
-    month = target_date[1]
     total_income = 0.0
     total_expenses = 0.0
     categories: dict[str, float] = {}
     for record in financial_transactions_storage:
+        if not isinstance(record, dict):
+            continue
         record_date = record.get("date")
         if not record_date:
             continue
@@ -189,6 +174,12 @@ def _calculate_month_income_expenses(
         else:
             total_income += amount
     return total_income, total_expenses, categories
+
+
+def _calculate_month_income_expenses(
+    target_date: tuple[int, int, int]
+) -> tuple[float, float, dict[str, float]]:
+    return _get_month_amounts_and_categories(target_date[2], target_date[1])
 
 
 def _format_statistics(
@@ -221,24 +212,31 @@ def _format_statistics(
 
 
 def income_handler(amount: float, income_date: str) -> str:
-    valid, error = _validate_income(amount, income_date)
     date_tuple = extract_date(income_date)
-    financial_transactions_storage.append(
-        {"amount": amount, "date": date_tuple}
-    )
-    if not valid:
-        return error
+    if amount <= 0:
+        financial_transactions_storage.append(None)
+        return NONPOSITIVE_VALUE_MSG
+    if date_tuple is None:
+        financial_transactions_storage.append(None)
+        return INCORRECT_DATE_MSG
+    financial_transactions_storage.append({"amount": amount, "date": date_tuple})
     return OP_SUCCESS_MSG
 
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
-    valid, error = _validate_cost(category_name, amount, income_date)
     date_tuple = extract_date(income_date)
+    if amount <= 0:
+        financial_transactions_storage.append(None)
+        return NONPOSITIVE_VALUE_MSG
+    if date_tuple is None:
+        financial_transactions_storage.append(None)
+        return INCORRECT_DATE_MSG
+    if validate_category(category_name) is None:
+        financial_transactions_storage.append(None)
+        return f"{NOT_EXISTS_CATEGORY}\n{format_categories()}"
     financial_transactions_storage.append(
         {"category": category_name, "amount": amount, "date": date_tuple}
     )
-    if not valid:
-        return error
     return OP_SUCCESS_MSG
 
 
@@ -263,11 +261,11 @@ def _handle_income_command(command_parts: list[str]) -> None:
     if len(command_parts) != INCOME_PARTS_COUNT:
         print(UNKNOWN_COMMAND_MSG)
         return
-    amount_value = parse_amount(command_parts[1])
-    if amount_value is None:
+    amount_val = parse_amount(command_parts[1])
+    if amount_val is None:
         print(UNKNOWN_COMMAND_MSG)
         return
-    result = income_handler(amount_value, command_parts[2])
+    result = income_handler(amount_val, command_parts[2])
     print(result)
 
 
@@ -278,11 +276,11 @@ def _handle_cost_command(command_parts: list[str]) -> None:
     if len(command_parts) != COST_PARTS_COUNT:
         print(UNKNOWN_COMMAND_MSG)
         return
-    amount_value = parse_amount(command_parts[2])
-    if amount_value is None:
+    amount_val = parse_amount(command_parts[2])
+    if amount_val is None:
         print(UNKNOWN_COMMAND_MSG)
         return
-    result = cost_handler(command_parts[1], amount_value, command_parts[3])
+    result = cost_handler(command_parts[1], amount_val, command_parts[3])
     print(result)
 
 
@@ -297,21 +295,21 @@ def _handle_stats_command(command_parts: list[str]) -> None:
 def main() -> None:
     while True:
         try:
-            user_input = input()
+            line = input()
         except EOFError:
             break
-        if not user_input:
+        if not line:
             break
-        input_parts = user_input.split()
-        if not input_parts:
+        parts = line.split()
+        if not parts:
             continue
-        command = input_parts[0]
-        if command == "income":
-            _handle_income_command(input_parts)
-        elif command == "cost":
-            _handle_cost_command(input_parts)
-        elif command == "stats":
-            _handle_stats_command(input_parts)
+        cmd = parts[0]
+        if cmd == "income":
+            _handle_income_command(parts)
+        elif cmd == "cost":
+            _handle_cost_command(parts)
+        elif cmd == "stats":
+            _handle_stats_command(parts)
         else:
             print(UNKNOWN_COMMAND_MSG)
 
