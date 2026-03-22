@@ -3,21 +3,22 @@
 import sys
 from typing import Any
 
-# Сообщения об ошибках
+# Error messages
 UNKNOWN_COMMAND_MSG = "Unknown command!"
 NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
 INCORRECT_DATE_MSG = "Invalid date!"
 NOT_EXISTS_CATEGORY = "Category not exists!"
 OP_SUCCESS_MSG = "Added"
 
-# Константы для "магических чисел"
+# Constants for magic values
 DATE_PARTS_COUNT = 3
 MONTHS_IN_YEAR = 12
 FEBRUARY = 2
-CATEGORY_SEPARATOR_COUNT = 2
+CATEGORY_PARTS_COUNT = 2
 INCOME_ARGS_COUNT = 3
 COST_ARGS_COUNT = 4
 STATS_ARGS_COUNT = 2
+CATEGORIES_LIST_CMD_LEN = 2
 
 EXPENSE_CATEGORIES = {
     "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
@@ -35,12 +36,12 @@ financial_transactions_storage: list[dict[str, Any]] = []
 
 
 def is_leap_year(year: int) -> bool:
-    """Определяет, является ли год високосным."""
+    """Check if the year is a leap year."""
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
 def _get_days_in_month(month: int, year: int) -> int:
-    """Возвращает количество дней в месяце."""
+    """Return the number of days in a given month."""
     if month in (1, 3, 5, 7, 8, 10, 12):
         return 31
     if month in (4, 6, 9, 11):
@@ -51,7 +52,7 @@ def _get_days_in_month(month: int, year: int) -> int:
 
 
 def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
-    """Парсит строку DD-MM-YYYY в кортеж (день, месяц, год)."""
+    """Parse DD-MM-YYYY string into a tuple (day, month, year)."""
     parts = maybe_dt.split("-")
     if len(parts) != DATE_PARTS_COUNT:
         return None
@@ -60,7 +61,6 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
         if not part.isdigit():
             return None
 
-    # ИСПРАВЛЕНО: берем элементы по индексу, а не весь список целиком
     day, month, year = int(parts), int(parts), int(parts)
 
     if year < 1 or month < 1 or month > MONTHS_IN_YEAR:
@@ -73,7 +73,7 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
 
 
 def _parse_amount(value: str) -> float | None:
-    """Безопасно парсит сумму."""
+    """Safely parse amount from string."""
     clean_val = value.replace(",", ".")
     check_val = clean_val.removeprefix("-")
 
@@ -87,17 +87,16 @@ def _parse_amount(value: str) -> float | None:
 
 
 def _is_valid_category(cat_str: str) -> bool:
-    """Проверяет формат и существование категории."""
+    """Check if the category string is valid."""
     parts = cat_str.split("::")
-    if len(parts) != CATEGORY_SEPARATOR_COUNT:
+    if len(parts) != CATEGORY_PARTS_COUNT:
         return False
-    # ИСПРАВЛЕНО: теперь берем строки из списка, а не сам список
     common, target = parts, parts
     return common in EXPENSE_CATEGORIES and target in EXPENSE_CATEGORIES[common]
 
 
 def income_handler(amount: float, income_date: str) -> str:
-    """Обработка дохода."""
+    """Handle income addition."""
     if amount <= 0:
         return NONPOSITIVE_VALUE_MSG
     dt_tuple = extract_date(income_date)
@@ -109,7 +108,7 @@ def income_handler(amount: float, income_date: str) -> str:
 
 
 def cost_handler(category_name: str, amount: float, cost_date: str) -> str:
-    """Обработка расхода."""
+    """Handle expense addition."""
     if not _is_valid_category(category_name):
         return f"{NOT_EXISTS_CATEGORY}\n{cost_categories_handler()}"
     if amount <= 0:
@@ -127,16 +126,14 @@ def cost_handler(category_name: str, amount: float, cost_date: str) -> str:
 
 
 def cost_categories_handler() -> str:
-    """Возвращает список всех категорий."""
+    """Return all available expense categories."""
     return "\n".join(
-        f"{main_cat}::{sub_cat}"
-        for main_cat, sub_cats in EXPENSE_CATEGORIES.items()
-        for sub_cat in sub_cats
+        f"{m}::{s}" for m, subs in EXPENSE_CATEGORIES.items() for s in subs
     )
 
 
 def stats_handler(report_date: str) -> str:
-    """Считает общую статистику."""
+    """Calculate and format financial statistics."""
     rep_dt = extract_date(report_date)
     if not rep_dt:
         return INCORRECT_DATE_MSG
@@ -151,7 +148,6 @@ def stats_handler(report_date: str) -> str:
         amt = tx["amount"]
         is_cost = "category" in tx
 
-        # Сравнение кортежей дат
         tx_comp = (tx_dt, tx_dt, tx_dt)
         rep_comp = (rep_dt, rep_dt, rep_dt)
 
@@ -171,14 +167,20 @@ def stats_handler(report_date: str) -> str:
     )
 
 
-def _format_stats_output(date_str, capital, income, expenses, details) -> str:
-    """Форматирует красивый вывод."""
+def _format_stats_output(
+    date_str: str,
+    capital: float,
+    income: float,
+    expenses: float,
+    details: dict[str, float],
+) -> str:
+    """Format final output string."""
     diff = income - expenses
-    type_res = "profit" if diff >= 0 else "loss"
+    res_type = "profit" if diff >= 0 else "loss"
     lines = [
         f"Your statistics as of {date_str}:",
         f"Total capital: {capital:.2f} rubles",
-        f"This month, the {type_res} amounted to {abs(diff):.2f} rubles.",
+        f"This month, the {res_type} amounted to {abs(diff):.2f} rubles.",
         f"Income: {income:.2f} rubles",
         f"Expenses: {expenses:.2f} rubles",
         "",
@@ -186,13 +188,13 @@ def _format_stats_output(date_str, capital, income, expenses, details) -> str:
     ]
     for i, cat in enumerate(sorted(details.keys()), 1):
         amt = details[cat]
-        amt_fmt = f"{int(amt)}" if amt.is_integer() else f"{amt:.2f}"
-        lines.append(f"{i}. {cat}: {amt_fmt}")
+        amt_f = f"{int(amt)}" if amt.is_integer() else f"{amt:.2f}"
+        lines.append(f"{i}. {cat}: {amt_f}")
     return "\n".join(lines)
 
 
 def _process_command(command: str) -> str:
-    """Парсинг командной строки."""
+    """Main command router."""
     parts = command.strip().split()
     if not parts:
         return UNKNOWN_COMMAND_MSG
@@ -201,9 +203,9 @@ def _process_command(command: str) -> str:
     if cmd == "income" and len(parts) == INCOME_ARGS_COUNT:
         amt = _parse_amount(parts)
         return income_handler(amt, parts) if amt is not None else NONPOSITIVE_VALUE_MSG
-    
+
     if cmd == "cost":
-        if len(parts) == 2 and parts == "categories":
+        if len(parts) == CATEGORIES_LIST_CMD_LEN and parts == "categories":
             return cost_categories_handler()
         if len(parts) == COST_ARGS_COUNT:
             amt = _parse_amount(parts)
@@ -216,7 +218,7 @@ def _process_command(command: str) -> str:
 
 
 def main() -> None:
-    """Точка входа."""
+    """Entry point."""
     for line in sys.stdin:
         if clean := line.strip():
             print(_process_command(clean))
