@@ -216,7 +216,8 @@ def _format_details(categories: dict[str, float]) -> list[str]:
     if not categories:
         return [""]
     lines = []
-    for idx, (cat, amt) in enumerate(sorted(categories.items()), start=1):
+    elems: Any = enumerate(sorted(categories.items()), start=1)
+    for idx, (cat, amt) in elems:
         lines.append(f"{idx}. {cat}: {_format_amount(amt)}")
     return lines
 
