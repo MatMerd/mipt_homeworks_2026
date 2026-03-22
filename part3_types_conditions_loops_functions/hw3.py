@@ -172,15 +172,15 @@ def calculate_month_stats(date: tuple[int, int, int]) -> tuple[float, float, dic
     month_income = 0
     month_expenses = 0
     details_by_category: dict[str, float] = {}
-    
+
     for transaction in financial_transactions_storage:
         if not transaction:
             continue
-            
+
         transaction_date = transaction["date"]
         if not is_date_before_or_equal(date, transaction_date):
             continue
-            
+
         amount = transaction["amount"]
         if "category" in transaction:
             if is_same_month(transaction_date, date):
@@ -190,33 +190,32 @@ def calculate_month_stats(date: tuple[int, int, int]) -> tuple[float, float, dic
                     details_by_category[target_category] += amount
                 else:
                     details_by_category[target_category] = amount
-        else:
-            if is_same_month(transaction_date, date):
+        elif is_same_month(transaction_date, date):
                 month_income += amount
-    
+
     return month_income, month_expenses, details_by_category
 
 
 def calculate_total_capital() -> float:
     total_capital = 0
-    
+
     for transaction in financial_transactions_storage:
         if not transaction:
             continue
-            
+
         amount = transaction["amount"]
         if "category" in transaction:
             total_capital -= amount
         else:
             total_capital += amount
-    
+
     return total_capital
 
 
 def format_statistics(report_date: str, total: float, income: float, expenses: float, details: dict[str, float]) -> str:
     result_amount = abs(income - expenses)
     result_type = "loss" if income - expenses < 0 else "profit"
-    
+
     statistics = [
         f"Your statistics as of {report_date}:",
         f"Total capital: {total:.2f} rubles",
@@ -226,11 +225,11 @@ def format_statistics(report_date: str, total: float, income: float, expenses: f
         "",
         "Details (category: amount):",
     ]
-    
+
     sorted_categories = sorted(details.items(), key=lambda item: item[0].lower())
     for idx, (category_name, amount) in enumerate(sorted_categories, start=1):
         statistics.append(f"{idx}. {category_name}: {amount:.2f}")
-    
+
     return "\n".join(statistics)
 
 
@@ -238,10 +237,10 @@ def stats_handler(report_date: str) -> str:
     date = extract_date(report_date)
     if date is None:
         return INCORRECT_DATE_MSG
-    
+
     total_capital = calculate_total_capital()
     month_income, month_expenses, details_by_category = calculate_month_stats(date)
-    
+
     return format_statistics(report_date, total_capital, month_income, month_expenses, details_by_category)
 
 
