@@ -39,7 +39,9 @@ financial_transactions_storage: list[dict[str, Any]] = []
 
 
 def is_leap_year(year: int) -> bool:
-    return ((year % 4 == 0) and (year % 100 != 0)) or (year % 400 == 0)
+    if year % 4 == 0 and year % 100 != 0:
+        return True
+    return year % 400 == 0
 
 
 def get_days_in_month(month: int, year: int) -> int:
@@ -147,74 +149,100 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
 
 
 def cost_categories_handler() -> str:
-    return "\n".join([f"{common_category}::{target_category}"
-                    for common_category, subcategories in EXPENSE_CATEGORIES.items()
-                    for target_category in subcategories])
+    return "\n".join([
+        f"{common_category}::{target_category}"
+        for common_category, subcategories in EXPENSE_CATEGORIES.items()
+        for target_category in subcategories
+    ])
 
 
-def is_same_month(first_date: tuple[int, int, int], second_date: tuple[int, int, int]) -> bool:
-    return first_date[1] == second_date[1] and first_date[2] == second_date[2]
+def is_same_month(date1: tuple[int, int, int], date2: tuple[int, int, int]) -> bool:
+    return date1[1] == date2[1] and date1[2] == date2[2]
 
 
-def is_date_before_or_equal(first_date: tuple[int, int, int], second_date: tuple[int, int, int]) -> bool:
+def is_date_before_or_equal(date1: tuple[int, int, int], date2: tuple[int, int, int]) -> bool:
     for i in range(2, -1, -1):
-        if first_date[i] != second_date[i]:
-            return first_date[i] < second_date[i]
+        if date2[i] != date1[i]:
+            return date1[i] < date2[i]
     return True
+
+
+def calculate_month_stats(date: tuple[int, int, int]) -> tuple[float, float, dict[str, float]]:
+    """Calculate month income, expenses and details."""
+    month_income = 0
+    month_expenses = 0
+    details_by_category: dict[str, float] = {}
+    
+    for transaction in financial_transactions_storage:
+        if not transaction:
+            continue
+            
+        transaction_date = transaction["date"]
+        if not is_date_before_or_equal(date, transaction_date):
+            continue
+            
+        amount = transaction["amount"]
+        if "category" in transaction:
+            if is_same_month(transaction_date, date):
+                month_expenses += amount
+                target_category = get_target_category(transaction["category"])
+                if target_category in details_by_category:
+                    details_by_category[target_category] += amount
+                else:
+                    details_by_category[target_category] = amount
+        else:
+            if is_same_month(transaction_date, date):
+                month_income += amount
+    
+    return month_income, month_expenses, details_by_category
+
+
+def calculate_total_capital() -> float:
+    total_capital = 0
+    
+    for transaction in financial_transactions_storage:
+        if not transaction:
+            continue
+            
+        amount = transaction["amount"]
+        if "category" in transaction:
+            total_capital -= amount
+        else:
+            total_capital += amount
+    
+    return total_capital
+
+
+def format_statistics(report_date: str, total: float, income: float, expenses: float, details: dict[str, float]) -> str:
+    result_amount = abs(income - expenses)
+    result_type = "loss" if income - expenses < 0 else "profit"
+    
+    statistics = [
+        f"Your statistics as of {report_date}:",
+        f"Total capital: {total:.2f} rubles",
+        f"This month, the {result_type} amounted to {result_amount:.2f} rubles.",
+        f"Income: {income:.2f} rubles",
+        f"Expenses: {expenses:.2f} rubles",
+        "",
+        "Details (category: amount):",
+    ]
+    
+    sorted_categories = sorted(details.items(), key=lambda item: item[0].lower())
+    for idx, (category_name, amount) in enumerate(sorted_categories, start=1):
+        statistics.append(f"{idx}. {category_name}: {amount:.2f}")
+    
+    return "\n".join(statistics)
 
 
 def stats_handler(report_date: str) -> str:
     date = extract_date(report_date)
     if date is None:
         return INCORRECT_DATE_MSG
-
-    total_capital = 0.0
-    month_income = 0.0
-    month_expenses = 0.0
-    detailes_by_category: dict[str, float] = {}
-
-    for transaction in financial_transactions_storage:
-        if not transaction:
-            continue
-
-        transaction_date = transaction["date"]
-        if not is_date_before_or_equal(date, transaction_date):
-            continue
-
-        amount = transaction["amount"]
-        if "category" in transaction:
-            total_capital -= amount
-            if is_same_month(transaction_date, date):
-                month_expenses += amount
-                target_category = get_target_category(transaction["category"])
-                detailes_by_category[target_category] = detailes_by_category.get(target_category, 0.0) + amount
-        else:
-            total_capital += amount
-            if is_same_month(transaction_date, date):
-                month_income += amount
-
-    if month_income - month_expenses < 0:
-        result_type = "loss"
-        result_amount = -(month_income - month_expenses)
-    else:
-        result_type = "profit"
-        result_amount = month_income - month_expenses
-
-    statistics = [
-        f"Your statistics as of {report_date}:",
-        f"Total capital: {total_capital:.2f} rubles",
-        f"This month, the {result_type} amounted to {result_amount:.2f} rubles.",
-        f"Income: {month_income:.2f} rubles",
-        f"Expenses: {month_expenses:.2f} rubles",
-        "",
-        "Details (category: amount):",
-    ]
-
-    sorted_categories = sorted(detailes_by_category.items(), key=lambda item: item[0].lower())
-    for idx, (category_name, amount) in enumerate(sorted_categories, start=1):
-        statistics.append(f"{idx}. {category_name}: {amount:.2f}")
-
-    return "\n".join(statistics)
+    
+    total_capital = calculate_total_capital()
+    month_income, month_expenses, details_by_category = calculate_month_stats(date)
+    
+    return format_statistics(report_date, total_capital, month_income, month_expenses, details_by_category)
 
 
 def output_handler(result: str) -> None:
@@ -285,7 +313,7 @@ def dispatch_command() -> bool:
 
 def main() -> None:
     while dispatch_command():
-        continue
+        pass
 
 
 if __name__ == "__main__":
