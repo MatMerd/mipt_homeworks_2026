@@ -2,7 +2,6 @@ from collections import defaultdict
 from collections.abc import Callable, Generator
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
-from math import cos
 from typing import NotRequired, Protocol, TypedDict, TypeVar, Unpack
 
 import pytest
