@@ -232,12 +232,10 @@ def format_statistics(report_date: str, total: float, income: float, expenses: f
         "Details (category: amount):",
     ]
 
-    
-
     return sorting_categories(details, statistics)
 
 
-def sorting_categories(details: DETAILES_DATA, statistics: list[str]) -> list[str]:
+def sorting_categories(details: DETAILES_DATA, statistics: list[str]) -> str:
     sorted_categories = sorted(details.items(), key=_category_key)
     for idx, (category_name, amount) in enumerate(sorted_categories, start=1):
         statistics.append(f"{idx}. {category_name}: {amount:.2f}")
