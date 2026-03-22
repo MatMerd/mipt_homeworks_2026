@@ -193,9 +193,9 @@ def calculate_month_stats(date: DATA_DATE) -> RESULT_OF_CALC:
                 month_expenses += amount
                 target_category = get_target_category(transaction[CATEGORY_KEY])
                 if target_category in details_by_category:
-                    details_by_category.get(target_category) += amount
+                    details_by_category[target_category] = details_by_category.get(target_category, 0) + amount
                 else:
-                    details_by_category.det(target_category) = amount
+                    details_by_category[target_category] = amount
         elif is_same_month(transaction_date, date):
             month_income += amount
 
