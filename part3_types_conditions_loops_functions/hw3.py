@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from dataclasses import dataclass, field
 from typing import Any
 
 UNKNOWN_COMMAND_MSG = "Unknown command!"
@@ -20,9 +19,13 @@ INCOME_KIND = "income"
 COST_KIND = "cost"
 CATEGORY_SEPARATOR = "::"
 CATEGORY_PARTS_COUNT = 2
-INCOME_COMMAND = "income"
-COST_COMMAND = "cost"
+INCOME_COMMAND = INCOME_KIND
+COST_COMMAND = COST_KIND
 STATS_COMMAND = "stats"
+STATS_CAPITAL_KEY = "capital"
+STATS_INCOME_KEY = "income"
+STATS_COST_KEY = "cost"
+STATS_DETAILS_KEY = "details"
 
 DATE_SEPARATOR = "-"
 DATE_PARTS_COUNT = 3
@@ -59,14 +62,7 @@ EXPENSE_CATEGORIES = {
 DateTuple = tuple[int, int, int]
 Transaction = dict[str, Any]
 CategoryTotals = dict[str, float]
-
-
-@dataclass
-class StatsAccumulator:
-    capital: float = float(0)
-    income: float = float(0)
-    cost: float = float(0)
-    details: CategoryTotals = field(default_factory=dict)
+StatsAccumulator = dict[str, Any]
 
 
 financial_transactions_storage: list[dict[str, Any]] = []
@@ -255,11 +251,21 @@ def collect_stats(report_date: DateTuple) -> tuple[float, float, float, Category
 
         process_operation_for_stats(operation, report_date, target_date, accumulator)
 
-    return accumulator.capital, accumulator.income, accumulator.cost, accumulator.details
+    return (
+        float(accumulator[STATS_CAPITAL_KEY]),
+        float(accumulator[STATS_INCOME_KEY]),
+        float(accumulator[STATS_COST_KEY]),
+        accumulator[STATS_DETAILS_KEY],
+    )
 
 
 def create_stats_accumulator() -> StatsAccumulator:
-    return StatsAccumulator()
+    return {
+        STATS_CAPITAL_KEY: float(0),
+        STATS_INCOME_KEY: float(0),
+        STATS_COST_KEY: float(0),
+        STATS_DETAILS_KEY: {},
+    }
 
 
 def make_sortable_date(date_data: DateTuple) -> DateTuple:
@@ -275,19 +281,19 @@ def process_operation_for_stats(
     amount, operation_date, category_name, kind = operation
     if make_sortable_date(operation_date) <= target_date:
         if kind == INCOME_KIND:
-            accumulator.capital += amount
+            accumulator[STATS_CAPITAL_KEY] += amount
         else:
-            accumulator.capital -= amount
+            accumulator[STATS_CAPITAL_KEY] -= amount
 
     if not is_current_month(operation_date, report_date):
         return
 
     if kind == INCOME_KIND:
-        accumulator.income += amount
+        accumulator[STATS_INCOME_KEY] += amount
         return
 
-    accumulator.cost += amount
-    details = accumulator.details
+    accumulator[STATS_COST_KEY] += amount
+    details = accumulator[STATS_DETAILS_KEY]
     details[category_name] = details.get(category_name, float(0)) + amount
 
 
