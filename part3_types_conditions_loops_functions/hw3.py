@@ -129,7 +129,7 @@ def format_categories() -> str:
 def convert_date_to_int(date: tuple[int, int, int]) -> int:
     year_part = date[2] * YEAR_MULTIPLIER
     month_part = date[1] * MONTH_MULTIPLIER
-    return year_part + month_part + date[0]
+    return (year_part + month_part) + date[0]
 
 
 def is_date_in_month(date: tuple[int, int, int], year: int, month: int) -> bool:
@@ -145,13 +145,13 @@ def _should_include_record(record: dict, target_int: int) -> bool:
 
 def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
     target_int = convert_date_to_int(target_date)
-    total = 0.0
+    total = 0
     for record in financial_transactions_storage:
         if not isinstance(record, dict):
             continue
         if not _should_include_record(record, target_int):
             continue
-        amount = record.get(KEY_AMOUNT, 0.0)
+        amount = record.get(KEY_AMOUNT, 0)
         if KEY_CATEGORY in record:
             total -= amount
         else:
@@ -164,21 +164,21 @@ def _process_record_for_month(
 ) -> tuple[float, float, dict[str, float]]:
     record_date = record.get(KEY_DATE)
     if not record_date:
-        return 0.0, 0.0, {}
+        return 0, 0, {}
     if not is_date_in_month(record_date, year, month):
-        return 0.0, 0.0, {}
-    amount = record.get(KEY_AMOUNT, 0.0)
+        return 0, 0, {}
+    amount = record.get(KEY_AMOUNT, 0)
     if KEY_CATEGORY in record:
         cat = record.get(KEY_CATEGORY, "")
-        return 0.0, amount, {cat: amount}
-    return amount, 0.0, {}
+        return 0, amount, {cat: amount}
+    return amount, 0, {}
 
 
 def _get_month_amounts_and_categories(
     year: int, month: int
 ) -> tuple[float, float, dict[str, float]]:
-    total_income = 0.0
-    total_expenses = 0.0
+    total_income: float = 0
+    total_expenses: float = 0
     categories: dict[str, float] = {}
     for record in financial_transactions_storage:
         if not isinstance(record, dict):
@@ -187,7 +187,7 @@ def _get_month_amounts_and_categories(
         total_income += inc
         total_expenses += exp
         for cat, amt in cat_dict.items():
-            categories[cat] = categories.get(cat, 0.0) + amt
+            categories[cat] = categories.get(cat, 0) + amt
     return total_income, total_expenses, categories
 
 
@@ -312,6 +312,21 @@ def _handle_stats_command(command_parts: list[str]) -> None:
     print(result)
 
 
+def _handle_line(line: str) -> None:
+    parts = line.split()
+    if not parts:
+        return
+    cmd = parts[0]
+    if cmd == "income":
+        _handle_income_command(parts)
+    elif cmd == "cost":
+        _handle_cost_command(parts)
+    elif cmd == "stats":
+        _handle_stats_command(parts)
+    else:
+        print(UNKNOWN_COMMAND_MSG)
+
+
 def _read_input() -> str | None:
     try:
         return input()
@@ -324,18 +339,7 @@ def main() -> None:
         line = _read_input()
         if line is None or not line:
             break
-        parts = line.split()
-        if not parts:
-            continue
-        cmd = parts[0]
-        if cmd == "income":
-            _handle_income_command(parts)
-        elif cmd == "cost":
-            _handle_cost_command(parts)
-        elif cmd == "stats":
-            _handle_stats_command(parts)
-        else:
-            print(UNKNOWN_COMMAND_MSG)
+        _handle_line(line)
 
 
 if __name__ == "__main__":
