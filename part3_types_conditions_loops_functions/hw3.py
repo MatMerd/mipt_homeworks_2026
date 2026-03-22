@@ -33,14 +33,15 @@ COST_PARTS_COUNT = 4
 STATS_PARTS_COUNT = 2
 COST_CATEGORIES_PARTS_COUNT = 2
 
+KEY_AMOUNT = "amount"
+KEY_DATE = "date"
+KEY_CATEGORY = "category"
+YEAR_MULTIPLIER = 10000
+MONTH_MULTIPLIER = 100
+
 
 def is_leap_year(year: int) -> bool:
-    is_divisible_by_4 = year % 4 == 0
-    if not is_divisible_by_4:
-        return False
-    is_divisible_by_100 = year % 100 == 0
-    is_divisible_by_400 = year % 400 == 0
-    return is_divisible_by_100 == is_divisible_by_400
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 
 def get_days_in_month(year: int, month: int) -> int:
@@ -99,12 +100,6 @@ def parse_amount(amount_str: str) -> float | None:
     return float(amount_str.replace(",", "."))
 
 
-def get_positive_amount(amount: float) -> float | None:
-    if amount > 0:
-        return amount
-    return None
-
-
 def validate_category(category_str: str) -> tuple[str, str] | None:
     if "::" not in category_str:
         return None
@@ -125,9 +120,7 @@ def format_categories() -> str:
 
 
 def convert_date_to_int(date: tuple[int, int, int]) -> int:
-    year_part = date[2] * 10000
-    month_part = date[1] * 100
-    return year_part + month_part + date[0]
+    return date[2] * YEAR_MULTIPLIER + date[1] * MONTH_MULTIPLIER + date[0]
 
 
 def is_date_in_month(date: tuple[int, int, int], year: int, month: int) -> bool:
@@ -140,12 +133,12 @@ def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
     for record in financial_transactions_storage:
         if not isinstance(record, dict):
             continue
-        record_date = record.get("date")
+        record_date = record.get(KEY_DATE)
         if record_date is None:
             continue
         if convert_date_to_int(record_date) <= target_int:
-            amount = record.get("amount", 0.0)
-            if "category" in record:
+            amount = record.get(KEY_AMOUNT, 0.0)
+            if KEY_CATEGORY in record:
                 total -= amount
             else:
                 total += amount
@@ -161,16 +154,16 @@ def _get_month_amounts_and_categories(
     for record in financial_transactions_storage:
         if not isinstance(record, dict):
             continue
-        record_date = record.get("date")
+        record_date = record.get(KEY_DATE)
         if not record_date:
             continue
         if not is_date_in_month(record_date, year, month):
             continue
-        amount = record.get("amount", 0.0)
-        if "category" in record:
+        amount = record.get(KEY_AMOUNT, 0.0)
+        if KEY_CATEGORY in record:
             total_expenses += amount
-            cat = record["category"]
-            categories[cat] = categories.get(cat, 0) + amount
+            cat = record[KEY_CATEGORY]
+            categories[cat] = categories.get(cat, 0.0) + amount
         else:
             total_income += amount
     return total_income, total_expenses, categories
@@ -190,7 +183,7 @@ def _format_statistics(
     categories: dict[str, float],
 ) -> str:
     profit = month_income - month_expenses
-    profit_word = "profit" if profit >= 0 else "loss"
+    profit_word = "profit" if profit >= 0.0 else "loss"
     profit_abs = abs(profit)
     lines = [
         f"Your statistics as of {report_date}:",
@@ -219,7 +212,7 @@ def income_handler(amount: float, income_date: str) -> str:
     if date_tuple is None:
         financial_transactions_storage.append(None)
         return INCORRECT_DATE_MSG
-    financial_transactions_storage.append({"amount": amount, "date": date_tuple})
+    financial_transactions_storage.append({KEY_AMOUNT: amount, KEY_DATE: date_tuple})
     return OP_SUCCESS_MSG
 
 
@@ -233,9 +226,9 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
         return INCORRECT_DATE_MSG
     if validate_category(category_name) is None:
         financial_transactions_storage.append(None)
-        return f"{NOT_EXISTS_CATEGORY}\n{format_categories()}"
+        return NOT_EXISTS_CATEGORY
     financial_transactions_storage.append(
-        {"category": category_name, "amount": amount, "date": date_tuple}
+        {KEY_CATEGORY: category_name, KEY_AMOUNT: amount, KEY_DATE: date_tuple}
     )
     return OP_SUCCESS_MSG
 
