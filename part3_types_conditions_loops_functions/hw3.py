@@ -22,7 +22,8 @@ EXPENSE_CATEGORIES = {
 
 financial_transactions_storage: list[Any] = []
 
-DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+# constants
+DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 MONTHS_IN_YEAR = 12
 DAYS_IN_LEAP_FEBRUARY = 29
 FEBRUARY_NUMBER = 2
@@ -41,7 +42,13 @@ MONTH_MULTIPLIER = 100
 
 
 def is_leap_year(year: int) -> bool:
-    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    divisible_by_4 = year % 4 == 0
+    if not divisible_by_4:
+        return False
+    divisible_by_100 = year % 100 == 0
+    if not divisible_by_100:
+        return True
+    return year % 400 == 0
 
 
 def get_days_in_month(year: int, month: int) -> int:
@@ -120,11 +127,20 @@ def format_categories() -> str:
 
 
 def convert_date_to_int(date: tuple[int, int, int]) -> int:
-    return date[2] * YEAR_MULTIPLIER + date[1] * MONTH_MULTIPLIER + date[0]
+    year_part = date[2] * YEAR_MULTIPLIER
+    month_part = date[1] * MONTH_MULTIPLIER
+    return year_part + month_part + date[0]
 
 
 def is_date_in_month(date: tuple[int, int, int], year: int, month: int) -> bool:
     return date[1] == month and date[2] == year
+
+
+def _should_include_record(record: dict, target_int: int) -> bool:
+    record_date = record.get(KEY_DATE)
+    if not record_date:
+        return False
+    return convert_date_to_int(record_date) <= target_int
 
 
 def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
@@ -133,16 +149,29 @@ def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
     for record in financial_transactions_storage:
         if not isinstance(record, dict):
             continue
-        record_date = record.get(KEY_DATE)
-        if record_date is None:
+        if not _should_include_record(record, target_int):
             continue
-        if convert_date_to_int(record_date) <= target_int:
-            amount = record.get(KEY_AMOUNT, 0.0)
-            if KEY_CATEGORY in record:
-                total -= amount
-            else:
-                total += amount
+        amount = record.get(KEY_AMOUNT, 0.0)
+        if KEY_CATEGORY in record:
+            total -= amount
+        else:
+            total += amount
     return total
+
+
+def _process_record_for_month(
+    record: dict, year: int, month: int
+) -> tuple[float, float, dict[str, float]]:
+    record_date = record.get(KEY_DATE)
+    if not record_date:
+        return 0.0, 0.0, {}
+    if not is_date_in_month(record_date, year, month):
+        return 0.0, 0.0, {}
+    amount = record.get(KEY_AMOUNT, 0.0)
+    if KEY_CATEGORY in record:
+        cat = record.get(KEY_CATEGORY, "")
+        return 0.0, amount, {cat: amount}
+    return amount, 0.0, {}
 
 
 def _get_month_amounts_and_categories(
@@ -154,18 +183,11 @@ def _get_month_amounts_and_categories(
     for record in financial_transactions_storage:
         if not isinstance(record, dict):
             continue
-        record_date = record.get(KEY_DATE)
-        if not record_date:
-            continue
-        if not is_date_in_month(record_date, year, month):
-            continue
-        amount = record.get(KEY_AMOUNT, 0.0)
-        if KEY_CATEGORY in record:
-            total_expenses += amount
-            cat = record[KEY_CATEGORY]
-            categories[cat] = categories.get(cat, 0.0) + amount
-        else:
-            total_income += amount
+        inc, exp, cat_dict = _process_record_for_month(record, year, month)
+        total_income += inc
+        total_expenses += exp
+        for cat, amt in cat_dict.items():
+            categories[cat] = categories.get(cat, 0.0) + amt
     return total_income, total_expenses, categories
 
 
@@ -173,6 +195,17 @@ def _calculate_month_income_expenses(
     target_date: tuple[int, int, int]
 ) -> tuple[float, float, dict[str, float]]:
     return _get_month_amounts_and_categories(target_date[2], target_date[1])
+
+
+def _format_details(categories: dict[str, float]) -> list[str]:
+    if not categories:
+        return [""]
+    lines = []
+    sorted_cats = sorted(categories.items())
+    for idx, (cat, amt) in enumerate(sorted_cats, start=1):
+        amt_str = f"{int(amt)}" if amt == int(amt) else f"{amt:.2f}"
+        lines.append(f"{idx}. {cat}: {amt_str}")
+    return lines
 
 
 def _format_statistics(
@@ -183,7 +216,7 @@ def _format_statistics(
     categories: dict[str, float],
 ) -> str:
     profit = month_income - month_expenses
-    profit_word = "profit" if profit >= 0.0 else "loss"
+    profit_word = "profit" if profit > 0 else "loss"
     profit_abs = abs(profit)
     lines = [
         f"Your statistics as of {report_date}:",
@@ -194,13 +227,7 @@ def _format_statistics(
         "",
         "Details (category: amount):",
     ]
-    if categories:
-        sorted_cats = sorted(categories.items())
-        for idx, (cat, amt) in enumerate(sorted_cats, start=1):
-            amt_str = f"{int(amt)}" if amt == int(amt) else f"{amt:.2f}"
-            lines.append(f"{idx}. {cat}: {amt_str}")
-    else:
-        lines.append("")
+    lines.extend(_format_details(categories))
     return "\n".join(lines)
 
 
@@ -285,13 +312,17 @@ def _handle_stats_command(command_parts: list[str]) -> None:
     print(result)
 
 
+def _read_input() -> str | None:
+    try:
+        return input()
+    except EOFError:
+        return None
+
+
 def main() -> None:
     while True:
-        try:
-            line = input()
-        except EOFError:
-            break
-        if not line:
+        line = _read_input()
+        if line is None or not line:
             break
         parts = line.split()
         if not parts:
