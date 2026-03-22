@@ -117,7 +117,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
 
 
 def format_categories() -> str:
-    lines: list = []
+    lines: list[str] = []
     for common, targets in EXPENSE_CATEGORIES.items():
         lines.extend(f"{common}::{target}" for target in targets)
     return "\n".join(lines)
