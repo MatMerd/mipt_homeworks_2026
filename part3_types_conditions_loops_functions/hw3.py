@@ -9,17 +9,17 @@ OP_SUCCESS_MSG = "Added"
 
 # System constants
 DATE_PARTS_COUNT = 3
-INCOME_COMMAND_PARTS = 3
-COST_COMMAND_PARTS = 4
-STATS_COMMAND_PARTS = 2
+INCOME_CMD_LEN = 3
+COST_CMD_LEN = 4
+STATS_CMD_LEN = 2
 FIRST_MONTH = 1
 LAST_MONTH = 12
 MIN_DAY = 1
-LONG_MONTH_DAYS = 31
-SHORT_MONTH_DAYS = 30
-LEAP_FEBRUARY_DAYS = 29
-COMMON_FEBRUARY_DAYS = 28
-FEBRUARY_MONTH = 2
+L_MONTH_DAYS = 31
+S_MONTH_DAYS = 30
+L_FEB_DAYS = 29
+C_FEB_DAYS = 28
+FEB_NUM = 2
 LONG_MONTHS = (1, 3, 5, 7, 8, 10, 12)
 SHORT_MONTHS = (4, 6, 9, 11)
 
@@ -34,205 +34,168 @@ def cost_categories_handler():
     return EXPENSE_CATEGORIES
 
 
-# Types
-Date = tuple[int, int, int]
-IncomeRecord = tuple[float, str]
-CostRecord = tuple[str, float, Date]
-CategoryTotals = dict[str, float]
-
-
 def is_leap_year(year: int) -> bool:
     """Checks if a year is leap."""
-    is_div_4 = year % 4 == 0
-    is_div_100 = year % 100 == 0
-    is_div_400 = year % 400 == 0
-    return (is_div_4 and not is_div_100) or is_div_400
+    div_four = year % 4 == 0
+    div_hundred = year % 100 == 0
+    div_four_hundred = year % 400 == 0
+    return (div_four and not div_hundred) or div_four_hundred
 
 
-def parse_date_parts(maybe_dt: str) -> Date | None:
+def parse_date_parts(maybe_dt: str):
     """Splits date string into integers."""
-    date_parts = maybe_dt.split("-")
-    if len(date_parts) != DATE_PARTS_COUNT:
+    parts = maybe_dt.split("-")
+    if len(parts) != DATE_PARTS_COUNT:
         return None
     try:
-        parts = [int(p) for p in date_parts if p.isdigit()]
-        if len(parts) != DATE_PARTS_COUNT:
-            return None
-        return parts[0], parts[1], parts[2]
+        return [int(p) for p in parts if p.isdigit()]
     except ValueError:
         return None
 
 
-def days_in_month(month: int, year: int) -> int | None:
+def days_in_month(month: int, year: int) -> int:
     """Returns number of days in a month."""
     if month in LONG_MONTHS:
-        return LONG_MONTH_DAYS
+        return L_MONTH_DAYS
     if month in SHORT_MONTHS:
-        return SHORT_MONTH_DAYS
-    if month == FEBRUARY_MONTH:
-        return LEAP_FEBRUARY_DAYS if is_leap_year(year) else COMMON_FEBRUARY_DAYS
-    return None
+        return S_MONTH_DAYS
+    if month == FEB_NUM:
+        return L_FEB_DAYS if is_leap_year(year) else C_FEB_DAYS
+    return 0
 
 
-def extract_date(maybe_dt: str) -> Date | None:
+def extract_date(maybe_dt: str):
     """Validates and returns date tuple."""
     parsed = parse_date_parts(maybe_dt)
-    if parsed is None:
+    if not parsed or len(parsed) != DATE_PARTS_COUNT:
         return None
     day, month, year = parsed
+    max_d = days_in_month(month, year)
     if month < FIRST_MONTH or month > LAST_MONTH or day < MIN_DAY:
         return None
-    max_d = days_in_month(month, year)
-    if max_d is None or day > max_d:
+    if max_d == 0 or day > max_d:
         return None
-    return parsed
+    return (day, month, year)
 
 
-def is_valid_amount_body(normalized: str) -> bool:
-    """Checks float structure."""
-    if normalized.count(".") > 1:
-        return False
-    if "." not in normalized:
-        return normalized.isdigit()
-    left, right = normalized.split(".", 1)
-    return left.isdigit() and right.isdigit()
-
-
-def parse_amount(raw: str) -> float | None:
+def parse_amount(raw: str):
     """Parses string to float safely."""
-    stripped = raw.strip()
-    if not stripped:
+    try:
+        return float(raw.strip().replace(",", "."))
+    except ValueError:
         return None
-    sign = ""
-    if stripped[0] in "+-":
-        sign, stripped = stripped[0], stripped[1:]
-    if not stripped:
-        return None
-    normalized = stripped.replace(",", ".")
-    if not is_valid_amount_body(normalized):
-        return None
-    return float(sign + normalized)
 
 
-def is_not_later(record_date: Date, border_date: Date) -> bool:
+def is_not_later(d1, d2) -> bool:
     """Compares two dates."""
-    return (record_date[2], record_date[1], record_date[0]) <= \
-           (border_date[2], border_date[1], border_date[0])
+    date_one = (d1[2], d1[1], d1[0])
+    date_two = (d2[2], d2[1], d2[0])
+    return date_one <= date_two
 
 
-def is_same_month(date1: Date, date2: Date) -> bool:
+def is_same_month(d1, d2) -> bool:
     """Checks if month and year match."""
-    return date1[1] == date2[1] and date1[2] == date2[2]
+    same_m = d1[1] == d2[1]
+    same_y = d1[2] == d2[2]
+    return same_m and same_y
 
 
-def handle_income(incomes: list[IncomeRecord], amt_str: str, dt_str: str) -> str:
-    """Handles income command."""
-    amount = parse_amount(amt_str)
-    if amount is None:
+def handle_income(incomes, amt_str, dt_str):
+    """Handles income."""
+    amt = parse_amount(amt_str)
+    if amt is None:
         return UNKNOWN_COMMAND_MSG
-    if amount <= 0:
+    if amt <= 0:
         return NONPOSITIVE_VALUE_MSG
-    if extract_date(dt_str) is None:
+    if not extract_date(dt_str):
         return INCORRECT_DATE_MSG
-
-    incomes.append((amount, dt_str))
-    financial_transactions_storage.append({
-        "type": "income", "amount": amount, "date": dt_str
-    })
-    return f"{OP_SUCCESS_MSG} amount={amount} income_date='{dt_str}'"
+    incomes.append((amt, dt_str))
+    financial_transactions_storage.append({"type": "income", "amount": amt, "date": dt_str})
+    return f"{OP_SUCCESS_MSG} amount={amt} income_date='{dt_str}'"
 
 
-def handle_cost(costs: list[CostRecord], cat: str, amt_str: str, dt_str: str) -> str:
-    """Handles cost command."""
-    if not cat.strip():
-        return UNKNOWN_COMMAND_MSG
-    amount = parse_amount(amt_str)
-    if amount is None:
-        return UNKNOWN_COMMAND_MSG
-    if amount <= 0:
-        return NONPOSITIVE_VALUE_MSG
+def handle_cost(costs, cat, amt_str, dt_str):
+    """Handles cost."""
+    amt = parse_amount(amt_str)
     dt = extract_date(dt_str)
-    if dt is None:
+    if not cat.strip() or amt is None:
+        return UNKNOWN_COMMAND_MSG
+    if amt <= 0:
+        return NONPOSITIVE_VALUE_MSG
+    if not dt:
         return INCORRECT_DATE_MSG
-
-    costs.append((cat, amount, dt))
-    financial_transactions_storage.append({
-        "type": "cost", "category": cat, "amount": amount, "date": dt_str
-    })
-    return f"{OP_SUCCESS_MSG} category_name='{cat}' amount={amount} cost_date='{dt_str}'"
+    costs.append((cat, amt, dt))
+    financial_transactions_storage.append({"type": "cost", "category": cat, "amount": amt, "date": dt_str})
+    return f"{OP_SUCCESS_MSG} category_name='{cat}' amount={amt} cost_date='{dt_str}'"
 
 
-def get_month_stats(incomes, costs, stats_dt):
+def get_month_stats(incomes, costs, s_dt):
     """Calculates monthly totals."""
-    m_inc = 0.0
-    for amt, d_str in incomes:
-        d = extract_date(d_str)
-        if d and is_same_month(d, stats_dt) and is_not_later(d, stats_dt):
-            m_inc += amt
-
-    m_cost = 0.0
-    cats = {}
-    for c, amt, d in costs:
-        if is_same_month(d, stats_dt) and is_not_later(d, stats_dt):
-            m_cost += amt
-            cats[c] = cats.get(c, 0.0) + amt
+    m_inc = 0
+    for a, ds in incomes:
+        d = extract_date(ds)
+        if d and is_same_month(d, s_dt) and is_not_later(d, s_dt):
+            m_inc += a
+    m_cost, cats = 0, {}
+    for c, a, d in costs:
+        if is_same_month(d, s_dt) and is_not_later(d, s_dt):
+            m_cost += a
+            cats[c] = cats.get(c, 0) + a
     return m_inc, m_cost, cats
 
 
-def show_stats(incomes: list[IncomeRecord], costs: list[CostRecord], date: str) -> str:
-    """Builds statistics report."""
-    stats_dt = extract_date(date)
-    if stats_dt is None:
-        return INCORRECT_DATE_MSG
+def format_val(amt):
+    """Helper to format float values."""
+    if amt.is_integer():
+        return str(int(amt))
+    return f"{amt:.10f}".rstrip("0").rstrip(".")
 
-    t_inc = sum(amt for amt, d_str in incomes if (d := extract_date(d_str)) and is_not_later(d, stats_dt))
-    t_cost = sum(amt for _, amt, d in costs if is_not_later(d, stats_dt))
-    m_inc, m_cost, cats = get_month_stats(incomes, costs, stats_dt)
 
-    total_cap = t_inc - t_cost
-    res_msg = "прибыль составила" if m_inc >= m_cost else "убыток составил"
-    res_val = abs(m_inc - m_cost)
-
-    lines = [
-        f"Ваша статистика по состоянию на {date}:",
-        f"Суммарный капитал: {total_cap:.2f} рублей",
-        f"В этом месяце {res_msg} {res_val:.2f} рублей",  # noqa: RUF001
+def build_lines(date_str, caps):
+    """Creates output lines to reduce complexity."""
+    t_cap, m_inc, m_cost, m_res, res_msg = caps
+    return [
+        f"Ваша статистика по состоянию на {date_str}:",
+        f"Суммарный капитал: {t_cap:.2f} рублей",
+        f"В этом месяце {res_msg} {m_res:.2f} рублей",  # noqa: RUF001
         f"Доходы: {m_inc:.2f} рублей",
         f"Расходы: {m_cost:.2f} рублей",
         "", "Детализация (категория: сумма):"
     ]
 
-    for i, c_name in enumerate(sorted(cats), 1):
-        amt = cats[c_name]
-        val = str(int(amt)) if amt.is_integer() else f"{amt:.10f}".rstrip("0").rstrip(".")
-        lines.append(f"{i}. {c_name}: {val}")
 
+def show_stats(incomes, costs, date_str):
+    """Shows statistics."""
+    s_dt = extract_date(date_str)
+    if not s_dt:
+        return INCORRECT_DATE_MSG
+    t_inc = sum(a for a, ds in incomes if (d := extract_date(ds)) and is_not_later(d, s_dt))
+    t_cost = sum(a for _, a, d in costs if is_not_later(d, s_dt))
+    m_inc, m_cost, cats = get_month_stats(incomes, costs, s_dt)
+    res_msg = "прибыль составила" if m_inc >= m_cost else "убыток составил"
+    m_res = abs(m_inc - m_cost)
+    lines = build_lines(date_str, (t_inc - t_cost, m_inc, m_cost, m_res, res_msg))
+    for i, name in enumerate(sorted(cats), 1):
+        lines.append(f"{i}. {name}: {format_val(cats[name])}")
     return "\n".join(lines)
 
 
-def process_command(parts: list[str], inc: list[IncomeRecord], cos: list[CostRecord]) -> str:
-    """Routes commands to handlers."""
-    if not parts:
-        return UNKNOWN_COMMAND_MSG
-    cmd = parts[0]
-    if cmd == "income" and len(parts) == INCOME_COMMAND_PARTS:
-        return handle_income(inc, parts[1], parts[2])
-    if cmd == "cost" and len(parts) == COST_COMMAND_PARTS:
-        return handle_cost(cos, parts[1], parts[2], parts[3])
-    if cmd == "stats" and len(parts) == STATS_COMMAND_PARTS:
-        return show_stats(inc, cos, parts[1])
-    return UNKNOWN_COMMAND_MSG
-
-
-def main() -> None:
-    """Main loop."""
-    incomes: list[IncomeRecord] = []
-    costs: list[CostRecord] = []
+def main():
+    """Main function."""
+    inc, cos = [], []
     for line in sys.stdin:
-        if raw := line.strip():
-            print(process_command(raw.split(), incomes, costs))
-        else:
+        raw = line.strip()
+        if not raw:
             break
+        p = raw.split()
+        if p[0] == "income" and len(p) == INCOME_CMD_LEN:
+            print(handle_income(inc, p[1], p[2]))
+        elif p[0] == "cost" and len(p) == COST_CMD_LEN:
+            print(handle_cost(cos, p[1], p[2], p[3]))
+        elif p[0] == "stats" and len(p) == STATS_CMD_LEN:
+            print(show_stats(inc, cos, p[1]))
+        else:
+            print(UNKNOWN_COMMAND_MSG)
 
 
 if __name__ == "__main__":
