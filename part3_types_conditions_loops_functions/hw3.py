@@ -28,6 +28,11 @@ DAYS_IN_LEAP_FEBRUARY = 29
 FEBRUARY_NUMBER = 2
 DATE_COUNT_PARTS = 3
 
+INCOME_PARTS_COUNT = 3
+COST_PARTS_COUNT = 4
+STATS_PARTS_COUNT = 2
+COST_CATEGORIES_PARTS_COUNT = 2
+
 
 def is_leap_year(year: int) -> bool:
     divisible_by_100 = year % 100 == 0
@@ -114,8 +119,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
 def format_categories() -> str:
     lines = []
     for common, targets in EXPENSE_CATEGORIES.items():
-        for target in targets:
-            lines.append(f"{common}::{target}")
+        lines.extend(f"{common}::{target}" for target in targets)
     return "\n".join(lines)
 
 
@@ -151,10 +155,7 @@ def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
     target_int = convert_date_to_int(target_date)
     total = 0.0
     for record in financial_transactions_storage:
-        record_date_str = record.get("date")
-        if not record_date_str:
-            continue
-        record_date = extract_date(record_date_str)
+        record_date = record.get("date")
         if not record_date:
             continue
         if convert_date_to_int(record_date) <= target_int:
@@ -175,10 +176,7 @@ def _calculate_month_income_expenses(
     total_expenses = 0.0
     categories: dict[str, float] = {}
     for record in financial_transactions_storage:
-        record_date_str = record.get("date")
-        if not record_date_str:
-            continue
-        record_date = extract_date(record_date_str)
+        record_date = record.get("date")
         if not record_date:
             continue
         if not is_date_in_month(record_date, year, month):
@@ -215,10 +213,7 @@ def _format_statistics(
     if categories:
         sorted_cats = sorted(categories.items())
         for idx, (cat, amt) in enumerate(sorted_cats, start=1):
-            if amt == int(amt):
-                amt_str = f"{int(amt)}"
-            else:
-                amt_str = f"{amt:.2f}"
+            amt_str = f"{int(amt)}" if amt == int(amt) else f"{amt:.2f}"
             lines.append(f"{idx}. {cat}: {amt_str}")
     else:
         lines.append("")
@@ -229,8 +224,9 @@ def income_handler(amount: float, income_date: str) -> str:
     valid, error = _validate_income(amount, income_date)
     if not valid:
         return error
+    date_tuple = extract_date(income_date)
     financial_transactions_storage.append(
-        {"amount": amount, "date": income_date}
+        {"amount": amount, "date": date_tuple}
     )
     return OP_SUCCESS_MSG
 
@@ -239,8 +235,9 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
     valid, error = _validate_cost(category_name, amount, income_date)
     if not valid:
         return error
+    date_tuple = extract_date(income_date)
     financial_transactions_storage.append(
-        {"category": category_name, "amount": amount, "date": income_date}
+        {"category": category_name, "amount": amount, "date": date_tuple}
     )
     return OP_SUCCESS_MSG
 
@@ -263,7 +260,7 @@ def stats_handler(report_date: str) -> str:
 
 
 def _handle_income_command(command_parts: list[str]) -> None:
-    if len(command_parts) != 3:
+    if len(command_parts) != INCOME_PARTS_COUNT:
         print(UNKNOWN_COMMAND_MSG)
         return
     amount_value = parse_amount(command_parts[1])
@@ -275,10 +272,10 @@ def _handle_income_command(command_parts: list[str]) -> None:
 
 
 def _handle_cost_command(command_parts: list[str]) -> None:
-    if len(command_parts) == 2 and command_parts[1] == "categories":
+    if len(command_parts) == COST_CATEGORIES_PARTS_COUNT and command_parts[1] == "categories":
         print(cost_categories_handler())
         return
-    if len(command_parts) != 4:
+    if len(command_parts) != COST_PARTS_COUNT:
         print(UNKNOWN_COMMAND_MSG)
         return
     amount_value = parse_amount(command_parts[2])
@@ -290,7 +287,7 @@ def _handle_cost_command(command_parts: list[str]) -> None:
 
 
 def _handle_stats_command(command_parts: list[str]) -> None:
-    if len(command_parts) != 2:
+    if len(command_parts) != STATS_PARTS_COUNT:
         print(UNKNOWN_COMMAND_MSG)
         return
     result = stats_handler(command_parts[1])
