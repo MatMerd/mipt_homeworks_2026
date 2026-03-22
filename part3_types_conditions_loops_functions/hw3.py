@@ -20,10 +20,17 @@ EXPENSE_CATEGORIES = {
 }
 
 
-financial_transactions_storage: list[dict[str, object]] = []
+DateType = tuple[int, int, int]
+TransactionType = dict[str, object]
+CategoryTotalsType = dict[str, float]
+
+financial_transactions_storage: list[TransactionType] = []
 
 DATE_SEPARATOR = "-"
 CATEGORY_SEPARATOR = "::"
+DOT_SEPARATOR = "."
+COMMA_SEPARATOR = ","
+MINUS_SIGN = "-"
 
 MIN_MONTH = 1
 MAX_MONTH = 12
@@ -36,6 +43,10 @@ DAY_PART_LENGTH = 2
 MONTH_PART_LENGTH = 2
 YEAR_PART_LENGTH = 4
 CATEGORY_PARTS_COUNT = 2
+MAX_AMOUNT_PARTS = 2
+
+ZERO = 0
+ONE = 1
 
 INCOME_COMMAND = "income"
 COST_COMMAND = "cost"
@@ -47,7 +58,34 @@ COST_CATEGORIES_COMMAND_PARTS_COUNT = 2
 COST_COMMAND_PARTS_COUNT = 4
 STATS_COMMAND_PARTS_COUNT = 2
 
-DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+TRANSACTION_TYPE_KEY = "type"
+TRANSACTION_AMOUNT_KEY = "amount"
+TRANSACTION_DATE_KEY = "date"
+TRANSACTION_CATEGORY_KEY = "category"
+
+CAPITAL_INDEX = 0
+INCOME_INDEX = 1
+EXPENSES_INDEX = 2
+
+DAY_INDEX = 0
+MONTH_INDEX = 1
+YEAR_INDEX = 2
+TARGET_CATEGORY_INDEX = 1
+
+DAYS_IN_MONTH = (
+    31,
+    28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+)
 
 
 def is_leap_year(year: int) -> bool:
@@ -65,56 +103,68 @@ def is_leap_year(year: int) -> bool:
     return year % 4 == 0
 
 
-def has_valid_date_parts_format(day_part: str, month_part: str, year_part: str) -> bool:
-    return (
-        day_part.isdigit()
-        and month_part.isdigit()
-        and year_part.isdigit()
-        and len(day_part) == DAY_PART_LENGTH
-        and len(month_part) == MONTH_PART_LENGTH
-        and len(year_part) == YEAR_PART_LENGTH
+def has_valid_date_parts_format(date_parts: list[str]) -> bool:
+    if len(date_parts) != DATE_PARTS_COUNT:
+        return False
+
+    lengths = (
+        DAY_PART_LENGTH,
+        MONTH_PART_LENGTH,
+        YEAR_PART_LENGTH,
+    )
+    return all(
+        part.isdigit() and len(part) == part_length
+        for part, part_length in zip(date_parts, lengths, strict=True)
     )
 
 
-def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
-    """
-    Парсит дату формата DD-MM-YYYY из строки.
-
-    :param str maybe_dt: Проверяемая строка
-    :return: typle формата (день, месяц, год) или None, если дата неправильная.
-    :rtype: tuple[int, int, int] | None
-    """
-    day_month_year = maybe_dt.split(DATE_SEPARATOR)
-    if len(day_month_year) != DATE_PARTS_COUNT:
-        return None
-
-    day_part, month_part, year_part = day_month_year
-    if not has_valid_date_parts_format(day_part, month_part, year_part):
-        return None
-
-    day = int(day_part)
-    month = int(month_part)
-    year = int(year_part)
-
-    if month < MIN_MONTH or month > MAX_MONTH:
-        return None
-
-    max_day = DAYS_IN_MONTH[month - 1]
+def get_month_day_limit(month: int, year: int) -> int:
+    month_limit = DAYS_IN_MONTH[month - MIN_MONTH]
     if month == FEBRUARY and is_leap_year(year):
-        max_day = LEAP_DAY_COUNT_IN_FEBRUARY
+        return LEAP_DAY_COUNT_IN_FEBRUARY
+    return month_limit
 
-    if day < MIN_DAY or day > max_day:
+
+def has_valid_date_values(date_value: DateType) -> bool:
+    day, month, year = date_value
+    if month < MIN_MONTH or month > MAX_MONTH:
+        return False
+    return MIN_DAY <= day <= get_month_day_limit(month, year)
+
+
+def extract_date(maybe_dt: str) -> DateType | None:
+    date_parts = maybe_dt.split(DATE_SEPARATOR)
+    if has_valid_date_parts_format(date_parts):
+        return extract_valid_date(maybe_dt)
+    return None
+
+
+def extract_valid_date(maybe_dt: str) -> DateType | None:
+    day_month_year = maybe_dt.split(DATE_SEPARATOR)
+    parsed_date = (
+        int(day_month_year[DAY_INDEX]),
+        int(day_month_year[MONTH_INDEX]),
+        int(day_month_year[YEAR_INDEX]),
+    )
+    if not has_valid_date_values(parsed_date):
         return None
 
-    return day, month, year
+    return parsed_date
+
+
+def extract_category_parts(category_name: str) -> tuple[str, str] | None:
+    category_parts = category_name.split(CATEGORY_SEPARATOR)
+    if len(category_parts) != CATEGORY_PARTS_COUNT:
+        return None
+    return category_parts[0], category_parts[TARGET_CATEGORY_INDEX]
 
 
 def is_valid_category_name(category_name: str) -> bool:
-    common_and_target = category_name.split(CATEGORY_SEPARATOR)
-    if len(common_and_target) != CATEGORY_PARTS_COUNT:
+    category_parts = extract_category_parts(category_name)
+    if category_parts is None:
         return False
 
-    common_category, target_category = common_and_target
+    common_category, target_category = category_parts
     return (
         common_category in EXPENSE_CATEGORIES
         and target_category in EXPENSE_CATEGORIES[common_category]
@@ -125,24 +175,24 @@ def append_empty_transaction() -> None:
     financial_transactions_storage.append({})
 
 
-def make_income_transaction(amount: float, income_date: tuple[int, int, int]) -> dict[str, object]:
+def make_income_transaction(amount: float, income_date: DateType) -> TransactionType:
     return {
-        "type": INCOME_COMMAND,
-        "amount": amount,
-        "date": income_date,
+        TRANSACTION_TYPE_KEY: INCOME_COMMAND,
+        TRANSACTION_AMOUNT_KEY: amount,
+        TRANSACTION_DATE_KEY: income_date,
     }
 
 
 def make_cost_transaction(
     category_name: str,
     amount: float,
-    cost_date: tuple[int, int, int],
-) -> dict[str, object]:
+    cost_date: DateType,
+) -> TransactionType:
     return {
-        "type": COST_COMMAND,
-        "category": category_name,
-        "amount": amount,
-        "date": cost_date,
+        TRANSACTION_TYPE_KEY: COST_COMMAND,
+        TRANSACTION_CATEGORY_KEY: category_name,
+        TRANSACTION_AMOUNT_KEY: amount,
+        TRANSACTION_DATE_KEY: cost_date,
     }
 
 
@@ -186,62 +236,98 @@ def cost_categories_handler() -> str:
     )
 
 
-def is_valid_storage_date(value: object) -> bool:
-    if not isinstance(value, tuple) or len(value) != DATE_PARTS_COUNT:
-        return False
-    day, month, year = value
-    return isinstance(day, int) and isinstance(month, int) and isinstance(year, int)
-
-
-def is_not_later_date(date1: tuple[int, int, int], date2: tuple[int, int, int]) -> bool:
-    day1, month1, year1 = date1
-    day2, month2, year2 = date2
-    return (year1, month1, day1) <= (year2, month2, day2)
-
-
-def is_same_month(date1: tuple[int, int, int], date2: tuple[int, int, int]) -> bool:
-    return date1[1] == date2[1] and date1[2] == date2[2]
-
-
-def get_target_category_name(category_name: str) -> str:
-    if CATEGORY_SEPARATOR not in category_name:
-        return category_name
-    return category_name.split(CATEGORY_SEPARATOR)[1]
-
-
-def extract_storage_transaction_date(transaction: dict[str, object]) -> tuple[int, int, int] | None:
-    raw_date = transaction.get("date")
-    if not is_valid_storage_date(raw_date):
+def extract_transaction_date(transaction: TransactionType) -> DateType | None:
+    raw_date = transaction.get(TRANSACTION_DATE_KEY)
+    if not isinstance(raw_date, tuple) or len(raw_date) != DATE_PARTS_COUNT:
         return None
-    return raw_date
+
+    if not all(isinstance(value, int) for value in raw_date):
+        return None
+
+    day, month, year = raw_date
+    return day, month, year
 
 
-def extract_storage_transaction_amount(transaction: dict[str, object]) -> float | None:
-    raw_amount = transaction.get("amount")
+def is_not_later_date(date1: DateType, date2: DateType) -> bool:
+    return (date1[YEAR_INDEX], date1[MONTH_INDEX], date1[DAY_INDEX]) <= (
+        date2[YEAR_INDEX],
+        date2[MONTH_INDEX],
+        date2[DAY_INDEX],
+    )
+
+
+def is_same_month(date1: DateType, date2: DateType) -> bool:
+    return get_month_year(date1) == get_month_year(date2)
+
+
+def get_month_year(date_value: DateType) -> tuple[int, int]:
+    return date_value[MONTH_INDEX], date_value[YEAR_INDEX]
+
+
+def extract_transaction_amount(transaction: TransactionType) -> float | None:
+    raw_amount = transaction.get(TRANSACTION_AMOUNT_KEY)
     if not isinstance(raw_amount, int | float):
         return None
     return float(raw_amount)
 
 
-def calculate_month_data_with_transaction(
-    transaction: dict[str, object],
-    amount: float,
-    current_month_income: float,
-    current_month_expenses: float,
-    expenses_by_categories: dict[str, float],
-) -> tuple[float, float]:
-    is_cost_transaction = transaction.get("type") == COST_COMMAND
-    if is_cost_transaction:
-        current_month_expenses += amount
-        raw_category = transaction.get("category")
-        if isinstance(raw_category, str):
-            target_category = get_target_category_name(raw_category)
-            stored_amount = expenses_by_categories.get(target_category, 0.0)
-            expenses_by_categories[target_category] = stored_amount + amount
-    else:
-        current_month_income += amount
+def extract_target_category_name(category_name: str) -> str:
+    category_parts = extract_category_parts(category_name)
+    if category_parts is None:
+        return category_name
+    return category_parts[TARGET_CATEGORY_INDEX]
 
-    return current_month_income, current_month_expenses
+
+def add_cost_to_categories(
+    transaction: TransactionType,
+    amount: float,
+    expenses_by_categories: CategoryTotalsType,
+) -> None:
+    raw_category = transaction.get(TRANSACTION_CATEGORY_KEY)
+    if not isinstance(raw_category, str):
+        return
+    target_category = extract_target_category_name(raw_category)
+    previous_amount = expenses_by_categories.get(target_category, float(ZERO))
+    expenses_by_categories[target_category] = previous_amount + amount
+
+
+def update_totals(
+    transaction: TransactionType,
+    report_date: DateType,
+    totals: list[float],
+    expenses_by_categories: CategoryTotalsType,
+) -> None:
+    transaction_date = extract_transaction_date(transaction)
+    if transaction_date is None or not is_not_later_date(transaction_date, report_date):
+        return
+
+    amount = extract_transaction_amount(transaction)
+    if amount is None:
+        return
+
+    is_cost = transaction.get(TRANSACTION_TYPE_KEY) == COST_COMMAND
+    if is_cost:
+        totals[CAPITAL_INDEX] -= amount
+    else:
+        totals[CAPITAL_INDEX] += amount
+
+    if not is_same_month(transaction_date, report_date):
+        return
+
+    if is_cost:
+        totals[EXPENSES_INDEX] += amount
+        add_cost_to_categories(transaction, amount, expenses_by_categories)
+    else:
+        totals[INCOME_INDEX] += amount
+
+
+def collect_statistics(report_date: DateType) -> tuple[list[float], CategoryTotalsType]:
+    totals = [float(ZERO), float(ZERO), float(ZERO)]
+    expenses_by_categories: CategoryTotalsType = {}
+    for transaction in financial_transactions_storage:
+        if transaction:
+            update_totals(transaction, report_date, totals, expenses_by_categories)
+    return totals, expenses_by_categories
 
 
 def build_stats_summary(
@@ -275,46 +361,13 @@ def stats_handler(report_date: str) -> str:
     if parsed_report_date is None:
         return INCORRECT_DATE_MSG
 
-    total_capital = 0.0
-    month_income = 0.0
-    month_expenses = 0.0
-    expenses_by_categories: dict[str, float] = {}
-
-    for transaction in financial_transactions_storage:
-        if not transaction:
-            continue
-
-        transaction_date = extract_storage_transaction_date(transaction)
-        if transaction_date is None:
-            continue
-
-        if not is_not_later_date(transaction_date, parsed_report_date):
-            continue
-
-        amount = extract_storage_transaction_amount(transaction)
-        if amount is None:
-            continue
-
-        is_cost_transaction = transaction.get("type") == COST_COMMAND
-        capital_delta = -amount if is_cost_transaction else amount
-        total_capital += capital_delta
-
-        if not is_same_month(transaction_date, parsed_report_date):
-            continue
-
-        month_income, month_expenses = calculate_month_data_with_transaction(
-            transaction=transaction,
-            amount=amount,
-            current_month_income=month_income,
-            current_month_expenses=month_expenses,
-            expenses_by_categories=expenses_by_categories,
-        )
+    totals, expenses_by_categories = collect_statistics(parsed_report_date)
 
     return build_stats_summary(
         report_date=report_date,
-        total_capital=total_capital,
-        month_income=month_income,
-        month_expenses=month_expenses,
+        total_capital=totals[CAPITAL_INDEX],
+        month_income=totals[INCOME_INDEX],
+        month_expenses=totals[EXPENSES_INDEX],
         expenses_by_categories=expenses_by_categories,
     )
 
@@ -323,30 +376,25 @@ def has_valid_amount_format(raw_amount: str) -> bool:
     if not raw_amount:
         return False
 
-    amount_without_sign = raw_amount.removeprefix("-")
+    amount_without_sign = raw_amount.removeprefix(MINUS_SIGN)
     if not amount_without_sign:
         return False
 
-    if amount_without_sign.count(".") + amount_without_sign.count(",") > 1:
+    normalized_amount = amount_without_sign.replace(COMMA_SEPARATOR, DOT_SEPARATOR)
+    if normalized_amount.count(DOT_SEPARATOR) > ONE:
         return False
 
-    if "." in amount_without_sign and "," in amount_without_sign:
+    amount_parts = normalized_amount.split(DOT_SEPARATOR)
+    if len(amount_parts) > MAX_AMOUNT_PARTS:
         return False
 
-    if "." in amount_without_sign:
-        integer_part, float_part = amount_without_sign.split(".")
-    elif "," in amount_without_sign:
-        integer_part, float_part = amount_without_sign.split(",")
-    else:
-        return amount_without_sign.isdigit()
-
-    return bool(integer_part) and bool(float_part) and integer_part.isdigit() and float_part.isdigit()
+    return all(amount_parts) and all(part.isdigit() for part in amount_parts)
 
 
 def parse_amount(raw_amount: str) -> float | None:
     if not has_valid_amount_format(raw_amount):
         return None
-    return float(raw_amount.replace(",", "."))
+    return float(raw_amount.replace(COMMA_SEPARATOR, DOT_SEPARATOR))
 
 
 def process_income_command(command_parts: list[str]) -> str:
