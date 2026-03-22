@@ -162,7 +162,7 @@ def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
     return total
 
 
-def _process_record_for_month(
+def _process_month_record(
     record: dict[str, Any], year: int, month: int
 ) -> tuple[float, float, dict[str, float]]:
     record_date = record.get(KEY_DATE)
@@ -177,26 +177,20 @@ def _process_record_for_month(
     return amount, 0, {}
 
 
-def _accumulate_categories(
-    categories: dict[str, float], cat_dict: dict[str, float]
-) -> None:
-    for cat, amt in cat_dict.items():
-        categories[cat] = categories.get(cat, 0) + amt
-
-
 def _get_month_amounts_and_categories(
     year: int, month: int
 ) -> tuple[float, float, dict[str, float]]:
-    total_income: float = 0
-    total_expenses: float = 0
+    total_income = 0.0
+    total_expenses = 0.0
     categories: dict[str, float] = {}
     for record in financial_transactions_storage:
         if not isinstance(record, dict):
             continue
-        inc, exp, cat_dict = _process_record_for_month(record, year, month)
-        total_income += inc
-        total_expenses += exp
-        _accumulate_categories(categories, cat_dict)
+        result = _process_month_record(record, year, month)
+        total_income += result[0]
+        total_expenses += result[1]
+        for cat, amt in result[2].items():
+            categories[cat] = categories.get(cat, 0) + amt
     return total_income, total_expenses, categories
 
 
@@ -209,12 +203,10 @@ def _calculate_month_income_expenses(
 def _format_details(categories: dict[str, float]) -> list[str]:
     if not categories:
         return [""]
-    lines = []
-    sorted_cats = sorted(categories.items())
-    for idx, (cat, amt) in enumerate(sorted_cats, start=1):
-        amt_str = f"{int(amt)}" if amt == int(amt) else f"{amt:.2f}"
-        lines.append(f"{idx}. {cat}: {amt_str}")
-    return lines
+    return [
+        f"{idx}. {cat}: {f'{int(amt)}' if amt == int(amt) else f'{amt:.2f}'}"
+        for idx, (cat, amt) in enumerate(sorted(categories.items()), start=1)
+    ]
 
 
 def _format_statistics(
