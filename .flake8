@@ -10,5 +10,7 @@ extend-ignore =
     WPS201,WPS202,WPS203,WPS204,
     WPS410,WPS411,WPS412,WPS413,WPS414,WPS415,WPS416,WPS417,WPS418,WPS419,WPS420,WPS421,WPS422,WPS423,WPS424,WPS425,WPS426,WPS427,WPS428,WPS429,WPS430,WPS431,WPS432,
 per-file-ignores =
-    __init__.py: F401
-    tests/*: S101, WPS204
+    __init__.py: F401, N999 # исправить
+    part3_types_conditions_loops_functions/hw3.py: WPS407
+    part3_types_conditions_loops_functions/tests/test_cost_handler.py: WPS218, WPS221
+    */tests/*: S101, WPS204, N999

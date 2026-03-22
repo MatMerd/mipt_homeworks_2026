@@ -209,3 +209,6 @@ __marimo__/
 # IDE
 .idea
 .vscode
+
+# MacOS
+.DS_Store

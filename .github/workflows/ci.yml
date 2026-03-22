@@ -46,13 +46,14 @@ jobs:
             fi
           fi
           
-          FOLDERS=$(echo "$CHANGED_FILES" | grep -vE '^\.' | cut -d'/' -f1 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          PY_FILES=$(echo "$CHANGED_FILES" | grep '\.py$' || true)
           
-          echo "folders=$FOLDERS" >> $GITHUB_OUTPUT
-          
-          if [ "$FOLDERS" = "[]" ] || [ -z "$FOLDERS" ]; then
+          if [ -z "$PY_FILES" ]; then
+            echo "folders=[]" >> $GITHUB_OUTPUT
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
+            FOLDERS=$(echo "$PY_FILES" | grep -vE '^\.' | cut -d'/' -f1 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "folders=$FOLDERS" >> $GITHUB_OUTPUT
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
