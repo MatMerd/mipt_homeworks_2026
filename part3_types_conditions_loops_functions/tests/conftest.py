@@ -161,8 +161,7 @@ def costs_batch(cost_factory: type[CostFactory]) -> Generator[list[Cost]]:
 def fill_financial_storage_date(incomes_batch: list[Income], costs_batch: list[Cost]) -> datetime:
     base_date = datetime.now(UTC) - timedelta(days=3)
 
-    for i in range(len(incomes_batch)):
-        income = incomes_batch[i]
+    for i, income in enumerate(incomes_batch):
         cost = costs_batch[i]
         str_date = base_date.strftime(DATE_FORMAT)
         income.date = str_date
@@ -193,11 +192,11 @@ def assert_stats_result(incomes_batch: list[Income], costs_batch: list[Cost]) ->
         )
         total_capital = round(costs_amount - incomes_amount, 2)
         category_details: defaultdict[str, float] = defaultdict(float)
-        for cost in costs_batch:
+        category_details_stat_data = []
+        for i, cost in enumerate(costs_batch, 1):
             category_details[cost.category] += cost.amount
-        category_details_stat = "\n".join(
-            f"{i}. {category}: {cost}" for i, (category, cost) in enumerate(category_details.items(), 1)
-        )
+            category_details_stat_data.append(f"{i}. {cost.category}: {cost.amount}")
+        category_details_stat = "\n".join(category_details_stat_data)
         amount_word = "loss" if total_capital < 0 else "profit"
         stats = STATS_TEMPLATE.format_map(
             {
