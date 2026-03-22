@@ -206,12 +206,18 @@ def _calculate_month_income_expenses(
     return _get_month_amounts_and_categories(target_date[2], target_date[1])
 
 
+def _format_amount(amt: float) -> str:
+    if amt == int(amt):
+        return str(int(amt))
+    return f"{amt:.2f}"
+
+
 def _format_details(categories: dict[str, float]) -> list[str]:
     if not categories:
         return [""]
     lines = []
     for idx, (cat, amt) in enumerate(sorted(categories.items()), start=1):
-        lines.append(f"{idx}. {cat}: {f'{int(amt)}' if amt == int(amt) else f'{amt:.2f}'}")
+        lines.append(f"{idx}. {cat}: {_format_amount(amt)}")
     return lines
 
 
