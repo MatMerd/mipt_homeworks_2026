@@ -23,7 +23,10 @@ EXPENSE_CATEGORIES = {
 financial_transactions_storage: list[Any] = []
 
 # constants
-DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+DAYS_IN_MONTH = (
+    31, 28, 31, 30, 31, 30,
+    31, 31, 30, 31, 30, 31,
+)
 MONTHS_IN_YEAR = 12
 DAYS_IN_LEAP_FEBRUARY = 29
 FEBRUARY_NUMBER = 2
@@ -42,11 +45,11 @@ MONTH_MULTIPLIER = 100
 
 
 def is_leap_year(year: int) -> bool:
-    divisible_by_4 = year % 4 == 0
-    if not divisible_by_4:
+    divisible_by_four = year % 4 == 0
+    if not divisible_by_four:
         return False
-    divisible_by_100 = year % 100 == 0
-    if not divisible_by_100:
+    divisible_by_hundred = year % 100 == 0
+    if not divisible_by_hundred:
         return True
     return year % 400 == 0
 
@@ -136,7 +139,7 @@ def is_date_in_month(date: tuple[int, int, int], year: int, month: int) -> bool:
     return date[1] == month and date[2] == year
 
 
-def _should_include_record(record: dict, target_int: int) -> bool:
+def _should_include_record(record: dict[str, Any], target_int: int) -> bool:
     record_date = record.get(KEY_DATE)
     if not record_date:
         return False
@@ -160,7 +163,7 @@ def _calculate_total_capital_until(target_date: tuple[int, int, int]) -> float:
 
 
 def _process_record_for_month(
-    record: dict, year: int, month: int
+    record: dict[str, Any], year: int, month: int
 ) -> tuple[float, float, dict[str, float]]:
     record_date = record.get(KEY_DATE)
     if not record_date:
@@ -172,6 +175,13 @@ def _process_record_for_month(
         cat = record.get(KEY_CATEGORY, "")
         return 0, amount, {cat: amount}
     return amount, 0, {}
+
+
+def _accumulate_categories(
+    categories: dict[str, float], cat_dict: dict[str, float]
+) -> None:
+    for cat, amt in cat_dict.items():
+        categories[cat] = categories.get(cat, 0) + amt
 
 
 def _get_month_amounts_and_categories(
@@ -186,8 +196,7 @@ def _get_month_amounts_and_categories(
         inc, exp, cat_dict = _process_record_for_month(record, year, month)
         total_income += inc
         total_expenses += exp
-        for cat, amt in cat_dict.items():
-            categories[cat] = categories.get(cat, 0) + amt
+        _accumulate_categories(categories, cat_dict)
     return total_income, total_expenses, categories
 
 
