@@ -180,13 +180,12 @@ def is_date_before_or_equal(date1: DATA_DATE, date2: DATA_DATE) -> bool:
 
 def calculate_month_stats(date: DATA_DATE) -> RESULT_OF_CALC:
     details_by_category: dict[str, float] = {}
-    result = [0, 0, {}]
+    result = [float(0), float(0), {}]
     for transaction in financial_transactions_storage:
         if not transaction:
             continue
 
-        transaction_date = transaction[DATE_KEY]
-        if not is_date_before_or_equal(date, transaction_date):
+        if check_info_tr(transaction, date):
             continue
 
         month_income, month_expenses, details_by_category = process_transaction(transaction, date, details_by_category)
@@ -212,18 +211,32 @@ def process_expense_transaction(
     return month_expenses + amount, details_by_category
 
 
+def check_info_tr(
+    transaction: TRANSACTION_DATA,
+    date: DATA_DATE
+) -> bool:
+    tr_date = transaction.get(AMOUNT_KEY)
+    if tr_date is None:
+        return True
+
+    if not is_same_month(tr_date, date):
+        return True
+
+    if is_date_before_or_equal(date, tr_date):
+        return True
+
+    return False
+
+
 def process_transaction(
     transaction: TRANSACTION_DATA,
     date: DATA_DATE,
     details_by_category: DETAILES_CAT_DATA
 ) -> RESULT_OF_CALC:
-    month_income = 0
-    month_expenses = 0
+    month_income = float(0)
+    month_expenses = float(0)
 
-    if transaction.get(AMOUNT_KEY) is None:
-        return month_income, month_expenses, details_by_category
-
-    if transaction.get(DATE_KEY) is None or not is_same_month(transaction.get(DATE_KEY), date):
+    if check_info_tr(transaction, date):
         return month_income, month_expenses, details_by_category
 
     category = transaction.get(CATEGORY_KEY)
