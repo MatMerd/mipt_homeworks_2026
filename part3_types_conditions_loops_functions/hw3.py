@@ -188,34 +188,57 @@ def income_handler(amount: Union[str, float], income_date: str) -> str:
     amount_parsed = parse_amount(str(amount))
     date = extract_date(income_date)
 
+    record: Dict[str, object] = {
+        "amount": amount_parsed,
+        "date": date
+    }
+
     if not valid_amount(amount_parsed):
+        financial_transactions_storage.append(record)
         return NONPOSITIVE_VALUE_MSG
+
     if not valid_date(date):
+        financial_transactions_storage.append(record)
         return INCORRECT_DATE_MSG
 
     assert amount_parsed is not None
     assert date is not None
 
     incomes.append((amount_parsed, date))
+    financial_transactions_storage.append(record)
+
     return OP_SUCCESS_MSG
 
 
 def cost_handler(category_name: str, amount: Union[str, float], income_date: str) -> str:
-    if validate_category(category_name) is None:
-        return f"{NOT_EXISTS_CATEGORY}\n{get_all_categories()}"
-
     amount_parsed = parse_amount(str(amount))
     date = extract_date(income_date)
+    category_parts = validate_category(category_name)
+
+    record: Dict[str, object] = {
+        "category": category_name,
+        "amount": amount_parsed,
+        "date": date
+    }
+
+    if category_parts is None:
+        financial_transactions_storage.append(record)
+        return f"{NOT_EXISTS_CATEGORY}\n{get_all_categories()}"
 
     if not valid_amount(amount_parsed):
+        financial_transactions_storage.append(record)
         return NONPOSITIVE_VALUE_MSG
+
     if not valid_date(date):
+        financial_transactions_storage.append(record)
         return INCORRECT_DATE_MSG
 
     assert amount_parsed is not None
     assert date is not None
 
     expenses.append((category_name, amount_parsed, date))
+    financial_transactions_storage.append(record)
+
     return OP_SUCCESS_MSG
 
 
