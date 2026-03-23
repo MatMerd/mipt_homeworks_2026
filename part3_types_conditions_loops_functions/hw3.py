@@ -203,12 +203,13 @@ def print_categories(categories: dict[str, float]) -> None:
         print(f"{idx}. {cat}: {int(amt):,}")
 
 
-def print_stats(stats: tuple[float, float, float, dict[str, float]], date: str) -> None:
-    capital, income, expenses_total, categories = stats
-
+def print_date(date: str) -> None:
     print(f"Your statistics as of {date}:")
-    print(f"Total capital: {capital:.2f} rubles")
 
+
+def print_stats(stats: tuple[float, float, float, dict[str, float]]) -> None:
+    capital, income, expenses_total, categories = stats
+    print(f"Total capital: {capital:.2f} rubles")
     print_breakdown(income, expenses_total)
     print_categories(categories)
 
