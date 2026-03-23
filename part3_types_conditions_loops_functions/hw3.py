@@ -235,10 +235,6 @@ def cost_handler(category_name: str, amount: str | float, income_date: str) -> s
     return OP_SUCCESS_MSG
 
 
-def cost_categories_handler() -> str:
-    return get_all_categories()
-
-
 def handle_invalid_date(date) -> str | None:
     if date is None:
         financial_transactions_storage.append({})
@@ -271,17 +267,20 @@ def format_income_expenses(income: float, expenses_total: float) -> list[str]:
 
 
 def format_categories(categories: dict[str, float]) -> list[str]:
-    return [f"{cat}: {int(amt)}" for cat, amt in sorted(categories.items())]
+    result: list[str] = []
+    sorted_items = sorted(categories.items())
+    for cat, amt in sorted_items:
+        result.append(f"{cat}: {int(amt)}")
+    return result
 
 
 def format_stats_text(report_date: str, stats: tuple[float, float, float, dict[str, float]]) -> str:
-    capital, income, expenses_total, categories = stats
 
     lines: list[str] = []
-    lines.extend(format_header(report_date, capital))
-    lines.extend(format_delta(income, expenses_total))
-    lines.extend(format_income_expenses(income, expenses_total))
-    lines.extend(format_categories(categories))
+    lines.extend(format_header(report_date, stats[0]))
+    lines.extend(format_delta(stats[1], stats[2]))
+    lines.extend(format_income_expenses(stats[1], stats[2]))
+    lines.extend(format_categories(stats[3]))
 
     return "\n".join(lines)
 
@@ -309,7 +308,7 @@ def handle_income(command_split: list[str]) -> None:
 
 def handle_cost(command_split: list[str]) -> None:
     if len(command_split) == COST_ARGS_COUNT and command_split[1] == "categories":
-        print(cost_categories_handler())
+        print(get_all_categories())
         return
 
     if len(command_split) != COST_ARGS_COUNT:
