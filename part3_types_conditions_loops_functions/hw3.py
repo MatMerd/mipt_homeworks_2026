@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import sys
-from dataclasses import dataclass, field
-from types import MappingProxyType
 from typing import Any
+from dataclasses import dataclass, field
+import sys
 
 UNKNOWN_COMMAND_MSG = "Unknown command!"
 NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
@@ -11,12 +10,8 @@ INCORRECT_DATE_MSG = "Invalid date!"
 NOT_EXISTS_CATEGORY = "Category not exists!"
 OP_SUCCESS_MSG = "Added"
 
-TRANSACTION_AMOUNT_KEY = "amount"
-TRANSACTION_DATE_KEY = "date"
-TRANSACTION_CATEGORY_KEY = "category"
 
-
-EXPENSE_CATEGORIES = MappingProxyType({
+EXPENSE_CATEGORIES = {
     "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
     "Transport": ("Taxi", "Public transport", "Gas", "Car service"),
     "Housing": ("Rent", "Utilities", "Repairs", "Furniture"),
@@ -25,11 +20,12 @@ EXPENSE_CATEGORIES = MappingProxyType({
     "Clothing": ("Outerwear", "Casual", "Shoes", "Accessories"),
     "Education": ("Courses", "Books", "Tutors"),
     "Communications": ("Mobile", "Internet", "Subscriptions"),
-    "Other": (),
-})
+    "Other": ("SomeCategory", "SomeOtherCategory"),
+}
 
-
-financial_transactions_storage: list[dict[str, Any] | None] = []
+TRANSACTION_AMOUNT_KEY = "amount"
+TRANSACTION_DATE_KEY = "date"
+TRANSACTION_CATEGORY_KEY = "category"
 
 DATE_SPLIT_COUNT = 3
 MIN_MONTH = 1
@@ -159,6 +155,9 @@ def _execute_command(command: list[str]) -> str:
     return UNKNOWN_COMMAND_MSG
 
 
+financial_transactions_storage: list[dict[str, Any]] = []
+
+
 def is_leap_year(year: int) -> bool:
     divisible_by_four = year % 4 == 0
     divisible_by_hundred = year % 100 == 0
@@ -177,11 +176,6 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
         return None
     return date if day <= _max_days_in_month(month, year) else None
 
-
-def date_le(date1: DateType, date2: DateType) -> bool:
-    year_and_month_and_day1 = (date1[2], date1[1], date1[0])
-    year_and_month_and_day2 = (date2[2], date2[1], date2[0])
-    return year_and_month_and_day1 <= year_and_month_and_day2
 
 
 def income_handler(amount: float, income_date: str) -> str:
