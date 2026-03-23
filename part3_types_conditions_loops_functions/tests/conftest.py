@@ -47,15 +47,18 @@ def parse_date(raw_date: str) -> tuple[int, int, int]:
 
 
 @dataclass
-class Income:
+class Base:
     amount: float
     date: str
 
 
 @dataclass
-class Cost:
-    amount: float
-    date: str
+class Income(Base):
+    pass
+
+
+@dataclass
+class Cost(Base):
     category: str
 
 
@@ -171,43 +174,41 @@ def fill_financial_storage_date(incomes_batch: list[Income], costs_batch: list[C
     return base_date
 
 
+T = TypeVar("T", bound=Base)
+
+
+def calculate_amount_sum[T: Base](amounted_objects: list[T], max_date: datetime, n_digits: int = 2) -> float:
+    return round(
+        sum(
+            amounted_obj.amount
+            for amounted_obj in amounted_objects
+            if datetime.strptime(amounted_obj.date, DATE_FORMAT).replace(tzinfo=UTC) < max_date
+        ),
+        n_digits,
+    )
+
+
 @pytest.fixture
 def assert_stats_result(incomes_batch: list[Income], costs_batch: list[Cost]) -> Callable[..., None]:
     def inner_assert(stats_result: str, stats_date: datetime) -> None:
-        costs_amount = round(
-            sum(
-                cost.amount
-                for cost in costs_batch
-                if datetime.strptime(cost.date, DATE_FORMAT).replace(tzinfo=UTC) < stats_date
-            ),
-            2,
-        )
-        incomes_amount = round(
-            sum(
-                income.amount
-                for income in incomes_batch
-                if datetime.strptime(income.date, DATE_FORMAT).replace(tzinfo=UTC) < stats_date
-            ),
-            2,
-        )
+        costs_amount = calculate_amount_sum(costs_batch, stats_date)
+        incomes_amount = calculate_amount_sum(incomes_batch, stats_date)
         total_capital = round(costs_amount - incomes_amount, 2)
         category_details: defaultdict[str, float] = defaultdict(float)
-        category_details_stat_data = []
-        for i, cost in enumerate(costs_batch, 1):
+        for cost in costs_batch:
             category_details[cost.category] += cost.amount
-            category_details_stat_data.append(f"{i}. {cost.category}: {cost.amount}")
-        category_details_stat = "\n".join(category_details_stat_data)
+        enumerated_categories = enumerate(category_details.items())
+        category_details_stat_data = [f"{i}. {category}: {amount}" for i, (category, amount) in enumerated_categories]
         amount_word = "loss" if total_capital < 0 else "profit"
-        stats = STATS_TEMPLATE.format_map(
+        assert stats_result == STATS_TEMPLATE.format_map(
             {
                 "stats_date": stats_date.strftime(DATE_FORMAT),
                 "total_capital": total_capital,
                 "amount_word": amount_word,
                 "costs_amount": costs_amount,
                 "incomes_amount": incomes_amount,
-                "category_details_stat": category_details_stat,
+                "category_details_stat": "\n".join(category_details_stat_data),
             }
         )
-        assert stats == stats_result
 
     return inner_assert
