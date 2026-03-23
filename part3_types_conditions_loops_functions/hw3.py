@@ -7,7 +7,6 @@ NONPOSITIVE_VALUE_MSG = "Value must be grater than zero!"
 INCORRECT_DATE_MSG = "Invalid date!"
 OP_SUCCESS_MSG = "Added"
 NOT_EXISTS_CATEGORY = "Category not exists!"
-
 INCOME_COMMAND = "income"
 COST_COMMAND = "cost"
 STATS_COMMAND = "stats"
@@ -15,11 +14,10 @@ KEY_DATE = "date"
 KEY_TYPE = "type"
 KEY_AMOUNT = "amount"
 KEY_CATEGORY = "categories"
-
 INCOME_COMMAND_PARTS = 3
 COST_COMMAND_PARTS = 4
 STATS_COMMAND_PARTS = 2
-
+MIN_COST_COMMAND_PARTS = 2
 DATE_PARTS_COUNT = 3
 CATEGORY_NAME_PARTS_COUNT = 2
 MONTHS_IN_YEAR = 12
@@ -66,6 +64,7 @@ def days_in_month(month: int, year: int) -> int:
 
 def is_valid_day_and_month(day: int, month: int, year: int) -> bool:
     return 1 <= month <= MONTHS_IN_YEAR and 1 <= day <= days_in_month(month, year)
+
 
 def extract_date(maybe_date: str) -> tuple[int, int, int] | None:
     parts = maybe_date.split("-")
@@ -130,10 +129,11 @@ def cost_handler(category_name: str, amount: float, date_str: str) -> str:
 
 
 def cost_categories_handler() -> str:
-    lines = []
-    for category, subcategories in EXPENSE_CATEGORIES.items():
-        for subcategory in subcategories:
-            lines.append(f"{category}::{subcategory}")
+    lines = [
+        f"{category}::{subcategory}"
+        for category, subcategories in EXPENSE_CATEGORIES.items()
+        for subcategory in subcategories
+    ]
     return "\n".join(lines)
 
 
@@ -143,6 +143,7 @@ def date_lower(date_one: DateTuple, date_other: DateTuple) -> bool:
     if date_one[1] != date_other[1]:
         return date_one[1] < date_other[1]
     return date_one[0] <= date_other[0]
+
 
 def same_month(date_one: DateTuple, date_other: DateTuple) -> bool:
     equal_months = date_one[1] == date_other[1]
@@ -172,11 +173,11 @@ def update_totals_for_cost(
 ) -> tuple[float, float, dict[str, float]]:
     item_date = item[KEY_DATE]
     amount = item[KEY_AMOUNT]
-    total_capital -= amount    
+    total_capital -= amount
     if same_month(item_date, report):
         month_expenses += amount
         category = item[KEY_CATEGORY]
-        expenses_by_cat[category] = expenses_by_cat.get(category, 0) + amount    
+        expenses_by_cat[category] = expenses_by_cat.get(category, 0) + amount
     return total_capital, month_expenses, expenses_by_cat
 
 
@@ -207,7 +208,7 @@ def final_stats(
     return total_capital, month_income, month_expenses, expenses_by_category
 
 
-def profit_loss (month_income: float, month_expenses: float) -> str:
+def profit_loss(month_income: float, month_expenses: float) -> str:
     delta = month_income - month_expenses
     if delta >= 0:
         return f"This month, the profit amounted to {delta:.2f} rubles."
@@ -218,7 +219,7 @@ def format_stats(expenses_by_categories: dict[str, float]) -> list[str]:
     lines: list[str] = []
     lines.append("Details (category: amount):")
     if expenses_by_categories:
-        sorted_items = sorted(expenses_by_categories.items(), key = lambda x: x[0])
+        sorted_items = sorted(expenses_by_categories.items(), key=lambda x: x[0])
         for index, (category, amount) in enumerate(sorted_items, start=1):
             lines.append(f"{index}. {category}: {amount:.2f}")
     return lines
@@ -239,11 +240,13 @@ def stats_handler(report_date: str) -> str:
     lines.append("")
     lines.extend(format_stats(stats[3]))
     return "\n".join(lines)
-    
+
+
 def handle_income_command(parts: list[str]) -> str:
     if len(parts) != INCOME_COMMAND_PARTS:
         return UNKNOWN_COMMAND_MSG
     return income_handler(float(parts[1]), parts[2])
+
 
 def handle_cost_add_command(parts: list[str]) -> str:
     if len(parts) != COST_COMMAND_PARTS:
@@ -264,7 +267,7 @@ def command_handler(command: str, parts: list[str]) -> str | None:
     if command == INCOME_COMMAND:
         return handle_income_command(parts)
     is_cost_command = command == COST_COMMAND
-    if is_cost_command and len(parts) >= 2:
+    if is_cost_command and len(parts) >= MIN_COST_COMMAND_PARTS:
         if len(parts) == STATS_COMMAND_PARTS and parts[1] == KEY_CATEGORY:
             return cost_categories_handler()
         return handle_cost_add_command(parts)
