@@ -108,13 +108,6 @@ def valid_amount(amount: float | None) -> bool:
     return amount is not None and amount > 0
 
 
-def get_all_categories() -> str:
-    categories: list[str] = []
-    for parent, subs in EXPENSE_CATEGORIES.items():
-        categories.extend([f"{parent}::{sub}" for sub in subs])
-    return "\n".join(categories)
-
-
 def is_before_or_on(trans_date: Date, target_date: Date) -> bool:
     if trans_date[2] != target_date[2]:
         return trans_date[2] < target_date[2]
@@ -235,7 +228,7 @@ def cost_handler(category_name: str, amount: str | float, income_date: str) -> s
     return OP_SUCCESS_MSG
 
 
-def handle_invalid_date(date) -> str | None:
+def handle_invalid_date(date: Date | None) -> str | None:
     if date is None:
         financial_transactions_storage.append({})
         return UNKNOWN_COMMAND_MSG
@@ -276,11 +269,14 @@ def format_categories(categories: dict[str, float]) -> list[str]:
 
 def format_stats_text(report_date: str, stats: tuple[float, float, float, dict[str, float]]) -> str:
 
-    lines: list[str] = []
-    lines.extend(format_header(report_date, stats[0]))
-    lines.extend(format_delta(stats[1], stats[2]))
-    lines.extend(format_income_expenses(stats[1], stats[2]))
-    lines.extend(format_categories(stats[3]))
+    capital, income, expenses_total, categories = stats
+
+    lines: list[str] = (
+        format_header(report_date, capital)
+        + format_delta(income, expenses_total)
+        + format_income_expenses(income, expenses_total)
+        + format_categories(categories)
+    )
 
     return "\n".join(lines)
 
@@ -299,7 +295,10 @@ def stats_handler(report_date: str) -> str:
 
 
 def cost_categories_handler() -> str:
-    return get_all_categories()
+    categories: list[str] = []
+    for parent, subs in EXPENSE_CATEGORIES.items():
+        categories.extend([f"{parent}::{sub}" for sub in subs])
+    return "\n".join(categories)
 
 
 def handle_income(command_split: list[str]) -> None:
@@ -312,7 +311,7 @@ def handle_income(command_split: list[str]) -> None:
 
 def handle_cost(command_split: list[str]) -> None:
     if len(command_split) == COST_ARGS_COUNT and command_split[1] == "categories":
-        print(get_all_categories())
+        print(cost_categories_handler())
         return
 
     if len(command_split) != COST_ARGS_COUNT:
