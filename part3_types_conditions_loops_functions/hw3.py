@@ -28,6 +28,7 @@ DAYS_IN_MONTH = (
 
 DATA_DATE = tuple[int, int, int]
 RESULT_OF_CALC = tuple[float, float, dict[str, float]]
+INCOM_EXPENSES_RESULT = tuple[float, float]
 DETAILES_DATA = dict[str, float]
 TRANSACTION_DATA = dict[str, Any]
 DETAILES_CAT_DATA = dict[str, float]
@@ -179,7 +180,6 @@ def is_date_before_or_equal(date1: DATA_DATE, date2: DATA_DATE) -> bool:
 
 
 def calculate_month_stats(date: DATA_DATE) -> RESULT_OF_CALC:
-    details_by_category: dict[str, float] = {}
     month_income = float(0)
     month_expenses = float(0)
     for transaction in financial_transactions_storage:
@@ -189,26 +189,39 @@ def calculate_month_stats(date: DATA_DATE) -> RESULT_OF_CALC:
         if check_info_tr(transaction, date):
             continue
 
-        income, expenses, details_by_category = process_transaction(transaction, date, details_by_category)
+        income, expenses = process_transaction(transaction, date)
         month_income += income
         month_expenses += expenses
 
-    return month_income, month_expenses, details_by_category
+    return month_income, month_expenses, process_detailes_by_category(date)
+
+
+def process_detailes_by_category(date: DATA_DATE) -> dict[str, float]:
+    details_by_category: dict[str, float] = {}
+    for transaction in financial_transactions_storage:
+        if not transaction:
+            continue
+
+        if check_info_tr(transaction, date):
+            continue
+
+        details_by_category = process_transaction_detailes(transaction, date, details_by_category)
+
+    return details_by_category
 
 
 def process_income_transaction(amount: float, month_income: float) -> float:
     return month_income + amount
 
 
-def process_expense_transaction(
+def process_detailes_transaction(
     amount: float,
     category: str,
-    month_expenses: float,
     details_by_category: DETAILES_CAT_DATA
 ) -> tuple[float, DETAILES_CAT_DATA]:
     target_category = get_target_category(category)
     details_by_category[target_category] = details_by_category.get(target_category, 0) + amount
-    return month_expenses + amount, details_by_category
+    return details_by_category
 
 
 def check_info_tr(
@@ -228,27 +241,44 @@ def check_info_tr(
 def process_transaction(
     transaction: TRANSACTION_DATA,
     date: DATA_DATE,
-    details_by_category: DETAILES_CAT_DATA
-) -> RESULT_OF_CALC:
+) -> INCOM_EXPENSES_RESULT:
     month_income = float(0)
     month_expenses = float(0)
 
     if check_info_tr(transaction, date):
-        return month_income, month_expenses, details_by_category
+        return month_income, month_expenses
 
     amount = transaction.get(AMOUNT_KEY)
     if amount is None:
-        return month_income, month_expenses, details_by_category
+        return month_income, month_expenses
 
     category = transaction.get(CATEGORY_KEY)
     if category is None:
         month_income = process_income_transaction(amount, month_income)
     else:
-        month_expenses, details_by_category = process_expense_transaction(
-            amount, category, month_expenses, details_by_category
-        )
+        month_expenses += amount
 
-    return month_income, month_expenses, details_by_category
+    return month_income, month_expenses
+
+
+def process_transaction_detailes(
+    transaction: TRANSACTION_DATA,
+    date: DATA_DATE,
+    details_by_category: DETAILES_CAT_DATA
+) -> dict[str, float]:
+    if check_info_tr(transaction, date):
+        return details_by_category
+
+    amount = transaction.get(AMOUNT_KEY)
+    if amount is None:
+        return details_by_category
+
+    category = transaction.get(CATEGORY_KEY)
+    if category is not None:
+        details_by_category = process_detailes_transaction(
+            amount, category, details_by_category
+        )
+    return details_by_category
 
 
 def calculate_total_capital() -> float:
