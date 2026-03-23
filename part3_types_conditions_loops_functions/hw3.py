@@ -86,7 +86,9 @@ def valid_date(date: Date | None) -> bool:
         return False
 
     if month == FEBRUARY:
-        return day <= (DAYS_IN_FEBRUARY_LEAP if is_leap_year(year) else DAYS_IN_FEBRUARY_NORMAL)
+        if is_leap_year(year):
+            return day <= DAYS_IN_FEBRUARY_LEAP
+        return day <= DAYS_IN_FEBRUARY_NORMAL
 
     return day <= valid_days_in_month[month]
 
@@ -126,8 +128,8 @@ def is_same_month_year(date1: Date, date2: Date) -> bool:
 
 
 def calculate_income(target: Date) -> tuple[float, float]:
-    capital: float = 0.0
-    month_income: float = 0.0
+    capital: float = 0
+    month_income: float = 0
 
     for amount, date in incomes:
         if is_before_or_on(date, target):
@@ -139,8 +141,8 @@ def calculate_income(target: Date) -> tuple[float, float]:
 
 
 def calculate_expenses(target: Date) -> tuple[float, float, dict[str, float]]:
-    capital: float = 0.0
-    month_expenses: float = 0.0
+    capital: float = 0
+    month_expenses: float = 0
     categories: dict[str, float] = {}
 
     for category, amount, date in expenses:
@@ -173,7 +175,8 @@ def print_stats(stats: tuple[float, float, float, dict[str, float]], date: str) 
     if delta > 0:
         print(f"This month, the profit amounted to {delta:.2f} rubles.")
     else:
-        print(f"This month, the loss amounted to {-delta:.2f} rubles.")
+        delta *= -1;
+        print(f"This month, the loss amounted to {delta:.2f} rubles.")
 
     print(f"Income: {income:.2f} rubles")
     print(f"Expenses: {expenses_total:.2f} rubles\n")
@@ -213,10 +216,6 @@ def cost_handler(category_name: str, amount: str | float, income_date: str) -> s
     amount_parsed = parse_amount(str(amount))
     date = extract_date(income_date)
 
-    if category_parts is None:
-        financial_transactions_storage.append({})
-        return NOT_EXISTS_CATEGORY   # ← FIXED
-
     if not valid_amount(amount_parsed):
         financial_transactions_storage.append({})
         return NONPOSITIVE_VALUE_MSG
@@ -224,6 +223,10 @@ def cost_handler(category_name: str, amount: str | float, income_date: str) -> s
     if not valid_date(date):
         financial_transactions_storage.append({})
         return INCORRECT_DATE_MSG
+
+    if category_parts is None:
+        financial_transactions_storage.append({})
+        return NOT_EXISTS_CATEGORY
 
     if amount_parsed is None or date is None:
         financial_transactions_storage.append({})
@@ -264,7 +267,8 @@ def stats_handler(report_date: str) -> str:
     if delta > 0:
         lines.append(f"This month, the profit amounted to {delta:.2f} rubles.")
     else:
-        lines.append(f"This month, the loss amounted to {-delta:.2f} rubles.")
+        delta *= -1
+        lines.append(f"This month, the loss amounted to {delta:.2f} rubles.")
 
     lines.append(f"Income: {income:.2f} rubles")
     lines.append(f"Expenses: {expenses_total:.2f} rubles\n")
