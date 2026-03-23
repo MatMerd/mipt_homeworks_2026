@@ -218,7 +218,7 @@ def process_detailes_transaction(
     amount: float,
     category: str,
     details_by_category: DETAILES_CAT_DATA
-) -> tuple[float, DETAILES_CAT_DATA]:
+) -> DETAILES_CAT_DATA:
     target_category = get_target_category(category)
     details_by_category[target_category] = details_by_category.get(target_category, 0) + amount
     return details_by_category
