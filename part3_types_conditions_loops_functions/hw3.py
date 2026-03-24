@@ -167,16 +167,21 @@ def all_transactions(
     else:
         state[2] += amount
         category = item[KEY_CATEGORY]
-        state[3][category] = state[3].get(category, 0) + amount
+        old_value = state[3].get(category, 0)
+        state[3][category] = old_value + amount
 
 
 def final_stats(report_tuple: DateTuple) -> tuple[float, float, float, dict[str, float]]:
-    state = [0.0, 0.0, 0.0, {}]
+    state: list[Any] = [0, 0, 0, {}]
     for item in financial_transactions_storage:
         if not item or not date_lower(item[KEY_DATE], report_tuple):
             continue
         all_transactions(item, report_tuple, state)
-    return tuple(state)
+    total: float = state[0]
+    income: float = state[1]
+    expenses: float = state[2]
+    categories: dict[str, float] = state[3]
+    return (total, income, expenses, categories)
 
 
 def profit_loss(month_income: float, month_expenses: float) -> str:
