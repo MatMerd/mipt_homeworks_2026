@@ -203,11 +203,10 @@ def cost_handler(category_name: str, amount: float, cost_date: str) -> None:
 
 
 def validate_category(category_str: str) -> tuple[str, str] | None:
-    parts = category_str.split("::")
-    if len(parts) != EXPECTED_CATEGORY_PARTS:
+    if len(category_str.split("::")) != EXPECTED_CATEGORY_PARTS:
         return None
 
-    common_category, target_cat = parts[0], parts[1]
+    common_category, target_cat = category_str.split("::")
 
     category_exists = False
     for cat_name, targets in EXPENSE_CATEGORIES:
@@ -396,10 +395,9 @@ def stats_handler(report_date: str) -> None:
     total_capital, month_income, month_expenses, expenses_by_category = result
 
     _print_statistics_header(report_date)
-    profit_loss = month_income - month_expenses
     _print_capital_and_profit(
         total_capital,
-        profit_loss,
+        month_income - month_expenses,
         month_income,
         month_expenses,
     )
