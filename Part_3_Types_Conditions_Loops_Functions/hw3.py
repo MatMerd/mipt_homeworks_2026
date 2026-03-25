@@ -15,7 +15,7 @@ MIN_MONTH = 1
 MAX_MONTH = 12
 MIN_DAY = 1
 EXPECTED_CATEGORY_PARTS = 2
-
+expenses_by_category = "expenses_by_category"
 TYPE_KEY = "type"
 AMOUNT_KEY = "amount"
 DATE_KEY = "date_str"
@@ -219,6 +219,8 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
         return None
 
     return (common_category, target_cat)
+
+
 def print_available_categories() -> None:
     for common_cat, targets in EXPENSE_CATEGORIES:
         for target in targets:
@@ -295,10 +297,10 @@ def _process_cost_transaction(
 
 def _initialize_statistics() -> dict:
     return {
-        "total": 0,
+        "tatal": 0,
         "month_income": 0,
         "month_expenses": 0,
-        "expenses_by_category": {}
+        expenses_by_category: {}
     }
 
 
@@ -323,8 +325,8 @@ def _process_transaction(
         if is_same_month(trans_date, target_date):
             stats["month_expenses"] += transaction[AMOUNT_KEY]
             category = transaction[CATEGORY_KEY]
-            stats["expenses_by_category"][category] = (
-                    stats["expenses_by_category"].get(category, 0) + transaction[AMOUNT_KEY]
+            stats[expenses_by_category][category] = (
+                    stats[expenses_by_category].get(category, 0) + transaction[AMOUNT_KEY]
             )
 
 
@@ -340,7 +342,7 @@ def calculate_statistics(
     for transaction in financial_transactions_storage:
         _process_transaction(transaction, stats, target_date)
 
-    return stats["total"], stats["month_income"], stats["month_expenses"], stats["expenses_by_category"]
+    return stats["tatal"], stats["month_income"], stats["month_expenses"], stats[expenses_by_category]
 
 
 def _get_category_sort_key(item: tuple[str, float]) -> str:
