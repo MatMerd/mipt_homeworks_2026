@@ -97,7 +97,7 @@ def extract_amount(maybe_amount: str) -> float | None:
         return None
 
     for symbol in amount_str:
-        if not symbol.isdigit():
+        if not symbol.isdigit() and symbol != ".":
             return None
 
     amount = float(maybe_amount)
@@ -127,33 +127,33 @@ def save_transaction(transaction: dict[str, Any]) -> None:
 
 def income_handler(amount: float, income_date: str) -> str:
     if amount <= 0:
-        save_transaction({AMOUNT_KEY: amount, DATE_KEY: date})
+        save_transaction({AMOUNT_KEY: amount, DATE_KEY: income_date})
         return NONPOSITIVE_VALUE_MSG
 
     date = extract_date(income_date)
     if date is None:
-        save_transaction({AMOUNT_KEY: amount, DATE_KEY: date})
+        save_transaction({AMOUNT_KEY: amount, DATE_KEY: income_date})
         return INCORRECT_DATE_MSG
 
-    save_transaction({AMOUNT_KEY: amount, DATE_KEY: date})
+    save_transaction({AMOUNT_KEY: amount, DATE_KEY: income_date})
     return OP_SUCCESS_MSG
 
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
     if not validate_category(category_name):
-        save_transaction()
+        save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: date})
         return NOT_EXISTS_CATEGORY
 
     if amount <= 0:
-        save_transaction()
+        save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: date})
         return NONPOSITIVE_VALUE_MSG
 
     date = extract_date(income_date)
     if date is None:
-        save_transaction()
+        save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: date})
         return INCORRECT_DATE_MSG
 
-    save_transaction.append({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: date})
+    save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: date})
     return OP_SUCCESS_MSG
 
 
