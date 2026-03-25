@@ -77,7 +77,7 @@ def _is_valid_number(s: str) -> bool:
         return False
 
     decimal_sep_count = 0
-    for i, char in enumerate(s):
+    for _i, char in enumerate(s):
         if char in (",", "."):
             decimal_sep_count += 1
             if decimal_sep_count > 1:
