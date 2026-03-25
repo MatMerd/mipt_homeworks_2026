@@ -1,3 +1,5 @@
+import random
+import string
 from collections.abc import Callable
 from typing import Any
 
@@ -18,3 +20,11 @@ def policy_generator() -> Callable[..., Policy[Any]]:
 @pytest.fixture
 def dict_storage() -> DictStorage[str, str]:
     return DictStorage()
+
+
+@pytest.fixture
+def random_string_generator() -> Callable[..., str]:
+    def generator(k: int = 16) -> str:
+        return "".join(random.choices(string.ascii_letters + string.digits + string.punctuation, k=k))
+
+    return generator
