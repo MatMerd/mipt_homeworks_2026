@@ -1,8 +1,5 @@
-from ast import TypeVar
 from collections.abc import Callable
 from typing import Any
-
-import pytest
 
 from part4_oop.hw45 import DictStorage, FIFOPolicy, LFUPolicy, LRUPolicy, MIPTCache
 from part4_oop.tests.consts import TEST_FIRST_KEY, TEST_SECOND_KEY

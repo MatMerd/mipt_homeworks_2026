@@ -25,6 +25,8 @@ def dict_storage() -> DictStorage[str, str]:
 @pytest.fixture
 def random_string_generator() -> Callable[..., str]:
     def generator(k: int = 16) -> str:
-        return "".join(random.choices(string.ascii_letters + string.digits + string.punctuation, k=k))
+        string_chars = string.ascii_letters + string.digits + string.punctuation
+        random_str = random.choices(string_chars, k=k)
+        return "".join(random_str)
 
     return generator
