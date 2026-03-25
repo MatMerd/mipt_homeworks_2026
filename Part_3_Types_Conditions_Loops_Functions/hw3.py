@@ -158,11 +158,13 @@ def is_same_month(
 
 
 def income_handler(amount: float, income_date: str) -> None:
-    financial_transactions_storage.append({
-        TYPE_KEY: "income",
-        AMOUNT_KEY: amount,
-        DATE_KEY: income_date,
-    })
+    financial_transactions_storage.append(
+        {
+            TYPE_KEY: "income",
+            AMOUNT_KEY: amount,
+            DATE_KEY: income_date,
+        }
+    )
     print(OP_SUCCESS_MSG)
 
 
@@ -189,12 +191,14 @@ def income_validate(description: tuple[str]) -> None:
 
 
 def cost_handler(category_name: str, amount: float, cost_date: str) -> None:
-    financial_transactions_storage.append({
-        TYPE_KEY: "cost",
-        CATEGORY_KEY: category_name,
-        AMOUNT_KEY: amount,
-        DATE_KEY: cost_date,
-    })
+    financial_transactions_storage.append(
+        {
+            TYPE_KEY: "cost",
+            CATEGORY_KEY: category_name,
+            AMOUNT_KEY: amount,
+            DATE_KEY: cost_date,
+        }
+    )
     print(OP_SUCCESS_MSG)
 
 
@@ -295,34 +299,54 @@ def _initialize_statistics() -> tuple[int, int, int, dict]:
     return 0, 0, 0, {}
 
 
+def _initialize_statistics() -> dict:
+    return {
+        "total": 0.0,
+        "month_income": 0.0,
+        "month_expenses": 0.0,
+        "expenses_by_category": {}
+    }
+
+
+def _process_transaction(
+        transaction: dict,
+        stats: dict,
+        target_date: tuple
+) -> None:
+    trans_date = extract_date(transaction[DATE_KEY])
+    if trans_date is None:
+        return
+
+    if compare_dates(trans_date, target_date) > 0:
+        return
+
+    if transaction[TYPE_KEY] == "income":
+        stats["total"] += transaction[AMOUNT_KEY]
+        if is_same_month(trans_date, target_date):
+            stats["month_income"] += transaction[AMOUNT_KEY]
+    else:
+        stats["total"] -= transaction[AMOUNT_KEY]
+        if is_same_month(trans_date, target_date):
+            stats["month_expenses"] += transaction[AMOUNT_KEY]
+            category = transaction[CATEGORY_KEY]
+            stats["expenses_by_category"][category] = (
+                    stats["expenses_by_category"].get(category, 0) + transaction[AMOUNT_KEY]
+            )
+
+
 def calculate_statistics(
-    date_str: str,
+        date_str: str,
 ) -> tuple[float, float, float, dict[str, float]] | None:
     target_date = extract_date(date_str)
     if target_date is None:
         return None
 
-    total_capital, month_income, month_expenses, expenses_by_category = _initialize_statistics()
+    stats = _initialize_statistics()
 
     for transaction in financial_transactions_storage:
-        trans_date = extract_date(transaction[DATE_KEY])
-        if trans_date is None:
-            continue
+        _process_transaction(transaction, stats, target_date)
 
-        if compare_dates(trans_date, target_date) > 0:
-            continue
-
-        if transaction[TYPE_KEY] == "income":
-            total_capital, month_income = _process_income_transaction(
-                transaction, target_date, total_capital, month_income,
-            )
-        else:
-            total_capital, month_expenses, expenses_by_category = _process_cost_transaction(
-                transaction, target_date, total_capital,
-                month_expenses, expenses_by_category,
-            )
-
-    return total_capital, month_income, month_expenses, expenses_by_category
+    return stats["total"], stats["month_income"], stats["month_expenses"], stats["expenses_by_category"]
 
 
 def _get_category_sort_key(item: tuple[str, float]) -> str:
@@ -345,7 +369,9 @@ def _print_capital_and_profit(
 ) -> None:
     print(f"Total capital: {_format_amount(total_capital)} rubles")
     if profit_loss >= 0:
-        print(f"This month, the profit amounted to {_format_amount(profit_loss)} rubles.")
+        print(
+            f"This month, the profit amounted to {_format_amount(profit_loss)} rubles."
+        )
     else:
         loss = abs(profit_loss)
         print(f"This month, the loss amounted to {_format_amount(loss)} rubles.")
@@ -376,7 +402,10 @@ def stats_handler(report_date: str) -> None:
     _print_statistics_header(report_date)
     profit_loss = month_income - month_expenses
     _print_capital_and_profit(
-        total_capital, profit_loss, month_income, month_expenses,
+        total_capital,
+        profit_loss,
+        month_income,
+        month_expenses,
     )
     _print_expenses_details(expenses_by_category)
 
@@ -415,8 +444,10 @@ def process_input(line: str) -> None:
 
 
 def main() -> None:
-    while (line := input()) != "":
+    line = input()
+    while line != "":
         process_input(line)
+        line = input()
 
 
 if __name__ == "__main__":
