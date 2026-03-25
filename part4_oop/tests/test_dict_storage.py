@@ -32,7 +32,7 @@ def test_double_set_key(dict_storage: DictStorage[str, str]) -> None:
     ("key", "value"),
     [
         (1, 1),
-        ("1", "1"),
+        ("key", "value"),
         ((1,), (1,)),
         (1.0, 1.0),
         ("list", [1, 2, 3, 4]),
