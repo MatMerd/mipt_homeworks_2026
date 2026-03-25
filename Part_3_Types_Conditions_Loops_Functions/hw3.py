@@ -21,17 +21,17 @@ AMOUNT_KEY = "amount"
 DATE_KEY = "date_str"
 CATEGORY_KEY = "category"
 
-EXPENSE_CATEGORIES = {
+EXPENSE_CATEGORIES = ({
     "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
     "Transport": ("Taxi", "Public transport", "Gas", "Car service"),
-    "Housing": ("Rent", "Utilities", "Repairs", "Furniture"),
+    "Housing": ("Rent" "Utilities", "Repairs", "Furniture"),
     "Health": ("Pharmacy", "Doctors", "Dentist", "Lab tests"),
     "Entertainment": ("Movies", "Concerts", "Games", "Subscriptions"),
     "Clothing": ("Outerwear", "Casual", "Shoes", "Accessories"),
     "Education": ("Courses", "Books", "Tutors"),
     "Communications": ("Mobile", "Internet", "Subscriptions"),
     "Other": ("SomeCategory", "SomeOtherCategory"),
-}
+})
 
 financial_transactions_storage: list[dict[str, Any]] = []
 
@@ -209,7 +209,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
     common_category, target_cat = category_str.split("::")
 
     category_exists = False
-    for cat_name, targets in EXPENSE_CATEGORIES:
+    for cat_name, targets in EXPENSE_CATEGORIES[0]:
         if cat_name == common_category and target_cat in targets:
             category_exists = True
             break
@@ -221,7 +221,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
 
 
 def print_available_categories() -> None:
-    for common_cat, targets in EXPENSE_CATEGORIES:
+    for common_cat, targets in EXPENSE_CATEGORIES[0]:
         for target in targets:
             print(f"{common_cat}::{target}")
 
