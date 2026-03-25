@@ -55,9 +55,8 @@ def is_leap_year(year: int) -> bool:
 
 
 def get_days_in_month(month: int, year: int) -> int:
-    if month == FEBRUARY_NUMBER:
-        if (is_leap_year(year)):
-            return DAYS_IN_MONTH[month - 1] + 1
+    if month == FEBRUARY_NUMBER and (is_leap_year(year)):
+        return DAYS_IN_MONTH[month - 1] + 1
     return DAYS_IN_MONTH[month - 1]
 
 
@@ -127,12 +126,10 @@ def save_transaction(transaction: dict[str, Any]) -> None:
 
 def income_handler(amount: float, income_date: str) -> str:
     if amount <= 0:
-        save_transaction({AMOUNT_KEY: amount, DATE_KEY: income_date})
         return NONPOSITIVE_VALUE_MSG
 
     date = extract_date(income_date)
     if date is None:
-        save_transaction({AMOUNT_KEY: amount, DATE_KEY: income_date})
         return INCORRECT_DATE_MSG
 
     save_transaction({AMOUNT_KEY: amount, DATE_KEY: income_date})
@@ -141,16 +138,13 @@ def income_handler(amount: float, income_date: str) -> str:
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
     if not validate_category(category_name):
-        save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: income_date})
         return NOT_EXISTS_CATEGORY
 
     if amount <= 0:
-        save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: income_date})
         return NONPOSITIVE_VALUE_MSG
 
     date = extract_date(income_date)
     if date is None:
-        save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: income_date})
         return INCORRECT_DATE_MSG
 
     save_transaction({CATEGORY_KEY: category_name, AMOUNT_KEY: amount, DATE_KEY: income_date})
@@ -175,8 +169,8 @@ def is_same_month(data1: DATA_DATE, data2: DATA_DATE) -> bool:
 
 #проверяем именно сначала год, потом месяц, потом день
 #потому что если я верну true на проверке дня это не значит, что
-#дата реально была до другой, врдуг день рантше, а год позднее
-#поэтому проверяем в обратном порядке, ну и на <, а не на >
+#дата реально была до другой, врдуг день рантше год позднее
+#поэтому проверяем в обратном порядке
 def is_date_before_or_equal(date1: DATA_DATE, date2: DATA_DATE) -> bool:
     for i in range(2, -1, -1):
         if date2[i] != date1[i]:
@@ -407,10 +401,7 @@ def main() -> None:
     false = True
     while false:
         input_line = input().strip()
-        if not input_line:
-            false = False
-        else:
-            false = dispatch_command(input_line)
+        false = False if not input_line else dispatch_command(input_line)
 
 
 if __name__ == "__main__":
