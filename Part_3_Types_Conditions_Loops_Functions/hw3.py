@@ -30,7 +30,7 @@ EXPENSE_CATEGORIES = {
     "Clothing": ("Outerwear", "Casual", "Shoes", "Accessories"),
     "Education": ("Courses", "Books", "Tutors"),
     "Communications": ("Mobile", "Internet", "Subscriptions"),
-    "Other": (),
+    "Other": ("SomeCategory", "SomeOtherCategory"),
 }
 
 financial_transactions_storage: list[dict[str, Any]] = []
@@ -68,6 +68,10 @@ def _is_digit_string(s: str) -> bool:
     return all(not (char < "0" or char > "9") for char in s)
 
 
+def _has_valid_decimal_separator(s: str, i: int) -> bool:
+    return i != 0 and i != len(s) - 1
+
+
 def _is_valid_number(s: str) -> bool:
     if not s:
         return False
@@ -77,7 +81,7 @@ def _is_valid_number(s: str) -> bool:
             decimal_sep_count += 1
             if decimal_sep_count > 1:
                 return False
-            if i == 0 or i == len(s) - 1:
+            if not _has_valid_decimal_separator(s, i):
                 return False
         elif char < "0" or char > "9":
             return False
@@ -219,6 +223,14 @@ def print_available_categories() -> None:
             print(f"{common_cat}::{target}")
 
 
+def _validate_cost_amount(amount_str: str) -> float | None:
+    amount = convert_amount(amount_str)
+    if amount is None or amount <= 0:
+        print(NONPOSITIVE_VALUE_MSG)
+        return None
+    return amount
+
+
 def cost_validator(description: tuple[str]) -> None:
     if len(description) == 1 and description[0] == "categories":
         print_available_categories()
@@ -234,13 +246,8 @@ def cost_validator(description: tuple[str]) -> None:
         print_available_categories()
         return
 
-    amount = convert_amount(description[1])
+    amount = _validate_cost_amount(description[1])
     if amount is None:
-        print(NONPOSITIVE_VALUE_MSG)
-        return
-
-    if amount <= 0:
-        print(NONPOSITIVE_VALUE_MSG)
         return
 
     date_tuple = extract_date(description[2])
@@ -284,6 +291,10 @@ def _process_cost_transaction(
     return total, month_exp, expenses
 
 
+def _initialize_statistics() -> tuple[int, int, int, dict]:
+    return 0, 0, 0, {}
+
+
 def calculate_statistics(
     date_str: str,
 ) -> tuple[float, float, float, dict[str, float]] | None:
@@ -291,10 +302,7 @@ def calculate_statistics(
     if target_date is None:
         return None
 
-    total_capital = 0
-    month_income = 0
-    month_expenses = 0
-    expenses_by_category = {}
+    total_capital, month_income, month_expenses, expenses_by_category = _initialize_statistics()
 
     for transaction in financial_transactions_storage:
         trans_date = extract_date(transaction[DATE_KEY])
@@ -386,22 +394,29 @@ def stats_validator(description: tuple[str]) -> None:
     stats_handler(description[0])
 
 
-def main() -> None:
-    while True:
-        user_input = input()
-        parts = user_input.split()
-        command = parts[0]
-        description = tuple(parts[1:])
+def process_input(line: str) -> None:
+    user_input = line.strip()
+    if not user_input:
+        return
 
-        match command:
-            case "income":
-                income_validate(description)
-            case "cost":
-                cost_validator(description)
-            case "stats":
-                stats_validator(description)
-            case _:
-                print(UNKNOWN_COMMAND_MSG)
+    parts = user_input.split()
+    command = parts[0]
+    description = tuple(parts[1:])
+
+    match command:
+        case "income":
+            income_validate(description)
+        case "cost":
+            cost_validator(description)
+        case "stats":
+            stats_validator(description)
+        case _:
+            print(UNKNOWN_COMMAND_MSG)
+
+
+def main() -> None:
+    while (line := input()) != "":
+        process_input(line)
 
 
 if __name__ == "__main__":
