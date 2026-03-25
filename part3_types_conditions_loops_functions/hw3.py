@@ -205,7 +205,11 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
 
 
 def cost_categories_handler() -> str:
-	return EXPENSE_CATEGORIES
+	returner = ""
+	for elem in EXPENSE_CATEGORIES:
+		for second_elem in EXPENSE_CATEGORIES[elem]:
+			returner += f"{elem}::{second_elem}\n"
+	return returner
 
 
 def stats_handler(report_date: str) -> str:
