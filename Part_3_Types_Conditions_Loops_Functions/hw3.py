@@ -14,7 +14,11 @@ DATE_PARTS_COUNT = 3
 MIN_MONTH = 1
 MAX_MONTH = 12
 MIN_DAY = 1
-COUNT_OF_CATEGORY_PARTS = 2
+
+TYPE_KEY = "type"
+AMOUNT_KEY = "amount"
+DATE_KEY = "date_str"
+CATEGORY_KEY = "category"
 
 EXPENSE_CATEGORIES = {
     "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
@@ -25,9 +29,8 @@ EXPENSE_CATEGORIES = {
     "Clothing": ("Outerwear", "Casual", "Shoes", "Accessories"),
     "Education": ("Courses", "Books", "Tutors"),
     "Communications": ("Mobile", "Internet", "Subscriptions"),
-    "Other": ("SomeCategory", "SomeOtherCategory"),
+    "Other": (),
 }
-
 
 financial_transactions_storage: list[dict[str, Any]] = []
 
@@ -61,7 +64,26 @@ def _get_days_in_month(month: int, year: int) -> int:
 def _is_digit_string(s: str) -> bool:
     if not s:
         return False
-    return all(not (char < "0" or char > "9") for char in s)
+    for char in s:
+        if char < "0" or char > "9":
+            return False
+    return True
+
+
+def _is_valid_number(s: str) -> bool:
+    if not s:
+        return False
+    decimal_sep_count = 0
+    for i, char in enumerate(s):
+        if char == "," or char == ".":
+            decimal_sep_count += 1
+            if decimal_sep_count > 1:
+                return False
+            if i == 0 or i == len(s) - 1:
+                return False
+        elif char < "0" or char > "9":
+            return False
+    return True
 
 
 def _validate_date_parts(parts: list[str]) -> tuple[int, int, int] | None:
@@ -72,37 +94,51 @@ def _validate_date_parts(parts: list[str]) -> tuple[int, int, int] | None:
         if not _is_digit_string(part):
             return None
 
-    return (int(parts[0]), int(parts[1]), int(parts[2]))
+    day_val = int(parts[0])
+    month_val = int(parts[1])
+    year_val = int(parts[2])
+    return (day_val, month_val, year_val)
+
+
+def _validate_date_values(day: int, month: int, year: int) -> bool:
+    if month < MIN_MONTH or month > MAX_MONTH:
+        return False
+    days_in_month = _get_days_in_month(month, year)
+    if day < MIN_DAY or day > days_in_month:
+        return False
+    return True
 
 
 def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     parts = maybe_dt.split("-")
-
     date_parts = _validate_date_parts(parts)
     if date_parts is None:
         return None
 
-    day, month, year = date_parts
-
-    if month < MIN_MONTH or month > MAX_MONTH:
+    day_val, month_val, year_val = date_parts
+    if not _validate_date_values(day_val, month_val, year_val):
         return None
-
-    days_in_month = _get_days_in_month(month, year)
-    if day < MIN_DAY or day > days_in_month:
-        return None
-
     return date_parts
 
 
-def convert_amount(amount_str: str) -> float:
-    return float(amount_str.replace(",", "."))
+def convert_amount(amount_str: str) -> float | None:
+    if not _is_valid_number(amount_str):
+        return None
+    normalized = amount_str.replace(",", ".")
+    return float(normalized)
 
 
 def parse_date_to_str(date_tuple: tuple[int, int, int]) -> str:
-    return f"{date_tuple[0]:02d}-{date_tuple[1]:02d}-{date_tuple[2]:04d}"
+    day_str = f"{date_tuple[0]:02d}"
+    month_str = f"{date_tuple[1]:02d}"
+    year_str = f"{date_tuple[2]:04d}"
+    return f"{day_str}-{month_str}-{year_str}"
 
 
-def compare_dates(date1: tuple[int, int, int], date2: tuple[int, int, int]) -> int:
+def compare_dates(
+    date1: tuple[int, int, int],
+    date2: tuple[int, int, int],
+) -> int:
     if date1[2] != date2[2]:
         return -1 if date1[2] < date2[2] else 1
     if date1[1] != date2[1]:
@@ -112,13 +148,22 @@ def compare_dates(date1: tuple[int, int, int], date2: tuple[int, int, int]) -> i
     return 0
 
 
-def is_same_month(date1: tuple[int, int, int], date2: tuple[int, int, int]) -> bool:
-    return date1[1] == date2[1] and date1[2] == date2[2]
+def is_same_month(
+    date1: tuple[int, int, int],
+    date2: tuple[int, int, int],
+) -> bool:
+    months_equal = date1[1] == date2[1]
+    years_equal = date1[2] == date2[2]
+    return months_equal and years_equal
 
 
 def income_handler(amount: float, income_date: str) -> None:
     financial_transactions_storage.append(
-        {"type": "income", "amount": amount, "date_str": income_date}
+        {
+            TYPE_KEY: "income",
+            AMOUNT_KEY: amount,
+            DATE_KEY: income_date,
+        }
     )
     print(OP_SUCCESS_MSG)
 
@@ -128,9 +173,8 @@ def income_validate(description: tuple[str]) -> None:
         print(UNKNOWN_COMMAND_MSG)
         return
 
-    try:
-        amount = convert_amount(description[0])
-    except ValueError:
+    amount = convert_amount(description[0])
+    if amount is None:
         print(NONPOSITIVE_VALUE_MSG)
         return
 
@@ -149,10 +193,10 @@ def income_validate(description: tuple[str]) -> None:
 def cost_handler(category_name: str, amount: float, cost_date: str) -> None:
     financial_transactions_storage.append(
         {
-            "type": "cost",
-            "category": category_name,
-            "amount": amount,
-            "date_str": cost_date,
+            TYPE_KEY: "cost",
+            CATEGORY_KEY: category_name,
+            AMOUNT_KEY: amount,
+            DATE_KEY: cost_date,
         }
     )
     print(OP_SUCCESS_MSG)
@@ -163,7 +207,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
         return None
 
     parts = category_str.split("::")
-    if len(parts) != COUNT_OF_CATEGORY_PARTS:
+    if len(parts) != 2:
         return None
 
     common_cat, target_cat = parts[0], parts[1]
@@ -198,9 +242,8 @@ def cost_validator(description: tuple[str]) -> None:
         print_available_categories()
         return
 
-    try:
-        amount = convert_amount(description[1])
-    except ValueError:
+    amount = convert_amount(description[1])
+    if amount is None:
         print(NONPOSITIVE_VALUE_MSG)
         return
 
@@ -213,7 +256,40 @@ def cost_validator(description: tuple[str]) -> None:
         print(INCORRECT_DATE_MSG)
         return
 
-    cost_handler(f"{category[0]}::{category[1]}", amount, parse_date_to_str(date_tuple))
+    cost_handler(
+        f"{category[0]}::{category[1]}",
+        amount,
+        parse_date_to_str(date_tuple),
+    )
+
+
+def _process_income_transaction(
+    transaction: dict,
+    target_date: tuple,
+    total: float,
+    month_inc: float,
+) -> tuple[float, float]:
+    total += transaction[AMOUNT_KEY]
+    trans_date = extract_date(transaction[DATE_KEY])
+    if trans_date is not None and is_same_month(trans_date, target_date):
+        month_inc += transaction[AMOUNT_KEY]
+    return total, month_inc
+
+
+def _process_cost_transaction(
+    transaction: dict,
+    target_date: tuple,
+    total: float,
+    month_exp: float,
+    expenses: dict,
+) -> tuple[float, float, dict]:
+    total -= transaction[AMOUNT_KEY]
+    trans_date = extract_date(transaction[DATE_KEY])
+    if trans_date is not None and is_same_month(trans_date, target_date):
+        month_exp += transaction[AMOUNT_KEY]
+        category = transaction[CATEGORY_KEY]
+        expenses[category] = expenses.get(category, 0) + transaction[AMOUNT_KEY]
+    return total, month_exp, expenses
 
 
 def calculate_statistics(
@@ -223,31 +299,81 @@ def calculate_statistics(
     if target_date is None:
         return None
 
-    total_capital = 0.0
-    month_income = 0.0
-    month_expenses = 0.0
+    total_capital = 0
+    month_income = 0
+    month_expenses = 0
     expenses_by_category = {}
 
     for transaction in financial_transactions_storage:
-        trans_date = extract_date(transaction["date_str"])
+        trans_date = extract_date(transaction[DATE_KEY])
         if trans_date is None:
             continue
 
-        if compare_dates(trans_date, target_date) <= 0:
-            if transaction["type"] == "income":
-                total_capital += transaction["amount"]
-                if is_same_month(trans_date, target_date):
-                    month_income += transaction["amount"]
-            else:
-                total_capital -= transaction["amount"]
-                if is_same_month(trans_date, target_date):
-                    month_expenses += transaction["amount"]
-                    category = transaction["category"]
-                    expenses_by_category[category] = (
-                        expenses_by_category.get(category, 0) + transaction["amount"]
-                    )
+        if compare_dates(trans_date, target_date) > 0:
+            continue
+
+        if transaction[TYPE_KEY] == "income":
+            total_capital, month_income = _process_income_transaction(
+                transaction,
+                target_date,
+                total_capital,
+                month_income,
+            )
+        else:
+            total_capital, month_expenses, expenses_by_category = (
+                _process_cost_transaction(
+                    transaction,
+                    target_date,
+                    total_capital,
+                    month_expenses,
+                    expenses_by_category,
+                )
+            )
 
     return total_capital, month_income, month_expenses, expenses_by_category
+
+
+def _get_category_sort_key(item: tuple[str, float]) -> str:
+    return item[0].lower()
+
+
+def _format_amount(amount: float) -> str:
+    return f"{amount:.2f}".replace(".", ",")
+
+
+def _print_statistics_header(report_date: str) -> None:
+    print(f"Your statistics as of {report_date}:")
+
+
+def _print_capital_and_profit(
+    total_capital: float,
+    profit_loss: float,
+    month_income: float,
+    month_expenses: float,
+) -> None:
+    print(f"Total capital: {_format_amount(total_capital)} rubles")
+    if profit_loss >= 0:
+        print(
+            f"This month, the profit amounted to {_format_amount(profit_loss)} rubles."
+        )
+    else:
+        loss = abs(profit_loss)
+        print(f"This month, the loss amounted to {_format_amount(loss)} rubles.")
+    print(f"Income: {_format_amount(month_income)} rubles")
+    print(f"Expenses: {_format_amount(month_expenses)} rubles")
+
+
+def _print_expenses_details(expenses_by_category: dict[str, float]) -> None:
+    print("\nDetails (category: amount):")
+    if expenses_by_category:
+        sorted_categories = sorted(
+            expenses_by_category.items(),
+            key=_get_category_sort_key,
+        )
+        for idx, (category, amount) in enumerate(sorted_categories, 1):
+            print(f"{idx}. {category}: {_format_amount(amount)}")
+    else:
+        print()
 
 
 def stats_handler(report_date: str) -> None:
@@ -257,33 +383,15 @@ def stats_handler(report_date: str) -> None:
 
     total_capital, month_income, month_expenses, expenses_by_category = result
 
-    sorted_categories = sorted(expenses_by_category.items(), key=lambda x: x[0].lower())
-
-    def format_amount(amount):
-        return f"{amount:.2f}".replace(".", ",")
-
-    print(f"Your statistics as of {report_date}:")
-    print(f"Total capital: {format_amount(total_capital)} rubles")
-
+    _print_statistics_header(report_date)
     profit_loss = month_income - month_expenses
-    if profit_loss >= 0:
-        print(
-            f"This month, the profit amounted to {format_amount(profit_loss)} rubles."
-        )
-    else:
-        print(
-            f"This month, the loss amounted to {format_amount(abs(profit_loss))} rubles."
-        )
-
-    print(f"Income: {format_amount(month_income)} rubles")
-    print(f"Expenses: {format_amount(month_expenses)} rubles")
-
-    print("\nDetails (category: amount):")
-    if sorted_categories:
-        for idx, (category, amount) in enumerate(sorted_categories, 1):
-            print(f"{idx}. {category}: {format_amount(amount)}")
-    else:
-        print()
+    _print_capital_and_profit(
+        total_capital,
+        profit_loss,
+        month_income,
+        month_expenses,
+    )
+    _print_expenses_details(expenses_by_category)
 
 
 def stats_validator(description: tuple[str]) -> None:
@@ -301,14 +409,7 @@ def stats_validator(description: tuple[str]) -> None:
 
 def main() -> None:
     while True:
-        try:
-            user_input = input()
-        except EOFError:
-            break
-
-        if not user_input.strip():
-            continue
-
+        user_input = input()
         parts = user_input.split()
         command = parts[0]
         description = tuple(parts[1:])
