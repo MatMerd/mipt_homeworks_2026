@@ -14,6 +14,7 @@ DATE_PARTS_COUNT = 3
 MIN_MONTH = 1
 MAX_MONTH = 12
 MIN_DAY = 1
+COUNT_OF_CATEGORY_PARTS = 2
 
 EXPENSE_CATEGORIES = {
     "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
@@ -60,10 +61,7 @@ def _get_days_in_month(month: int, year: int) -> int:
 def _is_digit_string(s: str) -> bool:
     if not s:
         return False
-    for char in s:
-        if char < "0" or char > "9":
-            return False
-    return True
+    return all(not (char < "0" or char > "9") for char in s)
 
 
 def _validate_date_parts(parts: list[str]) -> tuple[int, int, int] | None:
@@ -165,7 +163,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
         return None
 
     parts = category_str.split("::")
-    if len(parts) != 2:
+    if len(parts) != COUNT_OF_CATEGORY_PARTS:
         return None
 
     common_cat, target_cat = parts[0], parts[1]
@@ -286,7 +284,6 @@ def stats_handler(report_date: str) -> None:
             print(f"{idx}. {category}: {format_amount(amount)}")
     else:
         print("")
-
 
 def stats_validator(description: tuple[str]) -> None:
     if len(description) != EXPECTED_STATS_ARGS:
