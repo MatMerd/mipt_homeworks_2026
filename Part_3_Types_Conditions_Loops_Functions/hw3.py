@@ -75,16 +75,16 @@ def _has_valid_decimal_separator(s: str, i: int) -> bool:
 def _is_valid_number(s: str) -> bool:
     if not s:
         return False
+
     decimal_sep_count = 0
     for i, char in enumerate(s):
         if char in (",", "."):
             decimal_sep_count += 1
             if decimal_sep_count > 1:
                 return False
-            if not _has_valid_decimal_separator(s, i):
-                return False
-        elif char < "0" or char > "9":
+        elif not char.isdigit():
             return False
+
     return True
 
 
@@ -203,26 +203,24 @@ def cost_handler(category_name: str, amount: float, cost_date: str) -> None:
 
 
 def validate_category(category_str: str) -> tuple[str, str] | None:
-    if "::" not in category_str:
-        return None
-
     parts = category_str.split("::")
     if len(parts) != EXPECTED_CATEGORY_PARTS:
         return None
 
-    common_cat, target_cat = parts[0], parts[1]
+    common_category, target_cat = parts[0], parts[1]
 
-    if common_cat not in EXPENSE_CATEGORIES:
+    category_exists = False
+    for cat_name, targets in EXPENSE_CATEGORIES:
+        if cat_name == common_category and target_cat in targets:
+            category_exists = True
+            break
+
+    if not category_exists:
         return None
 
-    if target_cat not in EXPENSE_CATEGORIES[common_cat]:
-        return None
-
-    return (common_cat, target_cat)
-
-
+    return (common_category, target_cat)
 def print_available_categories() -> None:
-    for common_cat, targets in EXPENSE_CATEGORIES.items():
+    for common_cat, targets in EXPENSE_CATEGORIES:
         for target in targets:
             print(f"{common_cat}::{target}")
 
@@ -295,15 +293,11 @@ def _process_cost_transaction(
     return total, month_exp, expenses
 
 
-def _initialize_statistics() -> tuple[int, int, int, dict]:
-    return 0, 0, 0, {}
-
-
 def _initialize_statistics() -> dict:
     return {
-        "total": 0.0,
-        "month_income": 0.0,
-        "month_expenses": 0.0,
+        "total": 0,
+        "month_income": 0,
+        "month_expenses": 0,
         "expenses_by_category": {}
     }
 
