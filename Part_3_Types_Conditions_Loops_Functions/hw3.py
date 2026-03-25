@@ -283,7 +283,8 @@ def stats_handler(report_date: str) -> None:
         for idx, (category, amount) in enumerate(sorted_categories, 1):
             print(f"{idx}. {category}: {format_amount(amount)}")
     else:
-        print("")
+        print()
+
 
 def stats_validator(description: tuple[str]) -> None:
     if len(description) != EXPECTED_STATS_ARGS:
