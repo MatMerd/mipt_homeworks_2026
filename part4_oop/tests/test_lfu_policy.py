@@ -53,6 +53,7 @@ def test_delete_popular_key(policy_generator: Callable[..., LFUPolicy[Any]]) -> 
     policy.register_access(TEST_FIRST_KEY)
     assert policy._key_counter[TEST_FIRST_KEY] == 1  # noqa: SLF001
 
+
 def test_tie_break_with_equal_counter(policy_generator: Callable[..., LFUPolicy[Any]]) -> None:
     policy: LFUPolicy[str] = policy_generator(LFUPolicy, capacity=3)
     access_count = 10
