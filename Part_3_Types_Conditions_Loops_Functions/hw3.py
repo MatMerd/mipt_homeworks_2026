@@ -14,6 +14,7 @@ DATE_PARTS_COUNT = 3
 MIN_MONTH = 1
 MAX_MONTH = 12
 MIN_DAY = 1
+EXPECTED_CATEGORY_PARTS = 2
 
 TYPE_KEY = "type"
 AMOUNT_KEY = "amount"
@@ -64,10 +65,7 @@ def _get_days_in_month(month: int, year: int) -> int:
 def _is_digit_string(s: str) -> bool:
     if not s:
         return False
-    for char in s:
-        if char < "0" or char > "9":
-            return False
-    return True
+    return all(not (char < "0" or char > "9") for char in s)
 
 
 def _is_valid_number(s: str) -> bool:
@@ -75,7 +73,7 @@ def _is_valid_number(s: str) -> bool:
         return False
     decimal_sep_count = 0
     for i, char in enumerate(s):
-        if char == "," or char == ".":
+        if char in (",", "."):
             decimal_sep_count += 1
             if decimal_sep_count > 1:
                 return False
@@ -104,9 +102,7 @@ def _validate_date_values(day: int, month: int, year: int) -> bool:
     if month < MIN_MONTH or month > MAX_MONTH:
         return False
     days_in_month = _get_days_in_month(month, year)
-    if day < MIN_DAY or day > days_in_month:
-        return False
-    return True
+    return not (day < MIN_DAY or day > days_in_month)
 
 
 def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
@@ -158,13 +154,11 @@ def is_same_month(
 
 
 def income_handler(amount: float, income_date: str) -> None:
-    financial_transactions_storage.append(
-        {
-            TYPE_KEY: "income",
-            AMOUNT_KEY: amount,
-            DATE_KEY: income_date,
-        }
-    )
+    financial_transactions_storage.append({
+        TYPE_KEY: "income",
+        AMOUNT_KEY: amount,
+        DATE_KEY: income_date,
+    })
     print(OP_SUCCESS_MSG)
 
 
@@ -191,14 +185,12 @@ def income_validate(description: tuple[str]) -> None:
 
 
 def cost_handler(category_name: str, amount: float, cost_date: str) -> None:
-    financial_transactions_storage.append(
-        {
-            TYPE_KEY: "cost",
-            CATEGORY_KEY: category_name,
-            AMOUNT_KEY: amount,
-            DATE_KEY: cost_date,
-        }
-    )
+    financial_transactions_storage.append({
+        TYPE_KEY: "cost",
+        CATEGORY_KEY: category_name,
+        AMOUNT_KEY: amount,
+        DATE_KEY: cost_date,
+    })
     print(OP_SUCCESS_MSG)
 
 
@@ -207,7 +199,7 @@ def validate_category(category_str: str) -> tuple[str, str] | None:
         return None
 
     parts = category_str.split("::")
-    if len(parts) != 2:
+    if len(parts) != EXPECTED_CATEGORY_PARTS:
         return None
 
     common_cat, target_cat = parts[0], parts[1]
@@ -314,20 +306,12 @@ def calculate_statistics(
 
         if transaction[TYPE_KEY] == "income":
             total_capital, month_income = _process_income_transaction(
-                transaction,
-                target_date,
-                total_capital,
-                month_income,
+                transaction, target_date, total_capital, month_income,
             )
         else:
-            total_capital, month_expenses, expenses_by_category = (
-                _process_cost_transaction(
-                    transaction,
-                    target_date,
-                    total_capital,
-                    month_expenses,
-                    expenses_by_category,
-                )
+            total_capital, month_expenses, expenses_by_category = _process_cost_transaction(
+                transaction, target_date, total_capital,
+                month_expenses, expenses_by_category,
             )
 
     return total_capital, month_income, month_expenses, expenses_by_category
@@ -353,9 +337,7 @@ def _print_capital_and_profit(
 ) -> None:
     print(f"Total capital: {_format_amount(total_capital)} rubles")
     if profit_loss >= 0:
-        print(
-            f"This month, the profit amounted to {_format_amount(profit_loss)} rubles."
-        )
+        print(f"This month, the profit amounted to {_format_amount(profit_loss)} rubles.")
     else:
         loss = abs(profit_loss)
         print(f"This month, the loss amounted to {_format_amount(loss)} rubles.")
@@ -386,10 +368,7 @@ def stats_handler(report_date: str) -> None:
     _print_statistics_header(report_date)
     profit_loss = month_income - month_expenses
     _print_capital_and_profit(
-        total_capital,
-        profit_loss,
-        month_income,
-        month_expenses,
+        total_capital, profit_loss, month_income, month_expenses,
     )
     _print_expenses_details(expenses_by_category)
 
