@@ -13,17 +13,18 @@ CategoryStats = list[CategoryStat]
 StatsResult = tuple[float, float, float, CategoryStats]
 
 
-EXPENSE_CATEGORIES = {
-    "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
-    "Transport": ("Taxi", "Public transport", "Gas", "Car service"),
-    "Housing": ("Rent", "Utilities", "Repairs", "Furniture"),
-    "Health": ("Pharmacy", "Doctors", "Dentist", "Lab tests"),
-    "Entertainment": ("Movies", "Concerts", "Games", "Subscriptions"),
-    "Clothing": ("Outerwear", "Casual", "Shoes", "Accessories"),
-    "Education": ("Courses", "Books", "Tutors"),
-    "Communications": ("Mobile", "Internet", "Subscriptions"),
-    "Other": ("SomeCategory", "SomeOtherCategory"),
-}
+def get_expense_categories() -> dict[str, tuple[str, ...]]:
+    return {
+        "Food": ("Supermarket", "Restaurants", "FastFood", "Coffee", "Delivery"),
+        "Transport": ("Taxi", "Public transport", "Gas", "Car service"),
+        "Housing": ("Rent", "Utilities", "Repairs", "Furniture"),
+        "Health": ("Pharmacy", "Doctors", "Dentist", "Lab tests"),
+        "Entertainment": ("Movies", "Concerts", "Games", "Subscriptions"),
+        "Clothing": ("Outerwear", "Casual", "Shoes", "Accessories"),
+        "Education": ("Courses", "Books", "Tutors"),
+        "Communications": ("Mobile", "Internet", "Subscriptions"),
+        "Other": ("SomeCategory", "SomeOtherCategory"),
+    }
 
 income_transactions: list[tuple[float, str]] = []
 cost_transactions: list[tuple[str, float, str]] = []
@@ -124,16 +125,16 @@ def is_valid_category(category: str) -> bool:
     common_category = parts[0]
     target_category = parts[1]
 
-    if common_category not in EXPENSE_CATEGORIES:
+    if common_category not in get_expense_categories():
         return False
 
-    return target_category in EXPENSE_CATEGORIES[common_category]
+    return target_category in get_expense_categories()[common_category]
 
 
 def cost_categories_handler() -> str:
     lines: list[str] = []
 
-    for common_category, targets in EXPENSE_CATEGORIES.items():
+    for common_category, targets in get_expense_categories().items():
         lines.extend(f"{common_category}::{target_category}" for target_category in targets)
 
     return "\n".join(lines)
