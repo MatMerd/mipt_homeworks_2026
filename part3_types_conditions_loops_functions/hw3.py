@@ -55,7 +55,7 @@ EXPENSE_CATEGORIES = {
     "Clothing": ("Outerwear", "Casual", "Shoes", "Accessories"),
     "Education": ("Courses", "Books", "Tutors"),
     "Communications": ("Mobile", "Internet", "Subscriptions"),
-    "Other": ("Other",),
+    "Other": ("SomeCategory", "SomeOtherCategory"),
 }
 
 
@@ -215,14 +215,15 @@ def format_stats_report(report_date: str, stats_data: tuple[float, float, float,
     capital, current_income, current_cost, details = stats_data
     stats_lines = [
         f"{STATS_TITLE_PREFIX} {report_date}:",
-        f"{TOTAL_CAPITAL_TITLE}: {capital:.2f} {RUBLES_TEXT}",
-        format_profit_or_loss(current_income, current_cost),
-        f"{INCOME_TITLE}: {current_income:.2f} {RUBLES_TEXT}",
-        f"{EXPENSES_TITLE}: {current_cost:.2f} {RUBLES_TEXT}",
+        f"{TOTAL_CAPITAL_TITLE}: {capital} {RUBLES_TEXT}",
+        format_profit_or_loss(capital),
+        f"{INCOME_TITLE}: {current_cost} {RUBLES_TEXT}",
+        f"{EXPENSES_TITLE}: {current_income} {RUBLES_TEXT}",
         "",
         DETAILS_TITLE,
     ]
     stats_lines.extend(format_details_lines(details))
+    stats_lines.append("")
     return "\n".join(stats_lines)
 
 
@@ -247,14 +248,11 @@ def collect_stats(report_date: DateTuple) -> tuple[float, float, float, Category
         if operation is None:
             continue
 
-        process_operation_for_stats(operation, report_date, target_date, accumulator)
+        process_operation_for_stats(operation, target_date, accumulator)
 
-    return (
-        float(accumulator[STATS_CAPITAL_KEY]),
-        float(accumulator[STATS_INCOME_KEY]),
-        float(accumulator[STATS_COST_KEY]),
-        accumulator[STATS_DETAILS_KEY],
-    )
+    current_income = round(float(accumulator[STATS_INCOME_KEY]), 2)
+    current_cost = round(float(accumulator[STATS_COST_KEY]), 2)
+    return round(current_cost - current_income, 2), current_income, current_cost, accumulator[STATS_DETAILS_KEY]
 
 
 def create_stats_accumulator() -> StatsAccumulator:
@@ -272,18 +270,11 @@ def make_sortable_date(date_data: DateTuple) -> DateTuple:
 
 def process_operation_for_stats(
     operation: tuple[float, DateTuple, str, str],
-    report_date: DateTuple,
     target_date: DateTuple,
     accumulator: StatsAccumulator,
 ) -> None:
     amount, operation_date, category_name, kind = operation
-    if make_sortable_date(operation_date) <= target_date:
-        if kind == INCOME_KIND:
-            accumulator[STATS_CAPITAL_KEY] += amount
-        else:
-            accumulator[STATS_CAPITAL_KEY] -= amount
-
-    if not is_current_month(operation_date, report_date):
+    if make_sortable_date(operation_date) > target_date:
         return
 
     if kind == INCOME_KIND:
@@ -296,12 +287,7 @@ def process_operation_for_stats(
 
 
 def transaction_to_operation(transaction: Transaction) -> tuple[float, DateTuple, str, str] | None:
-    transaction_kind = transaction.get("kind")
-    if not isinstance(transaction_kind, str):
-        return None
-
-    if transaction_kind not in {INCOME_KIND, COST_KIND}:
-        return None
+    transaction_kind = get_transaction_kind(transaction)
 
     transaction_amount = get_transaction_amount(transaction)
     if transaction_amount is None:
@@ -314,6 +300,17 @@ def transaction_to_operation(transaction: Transaction) -> tuple[float, DateTuple
     category = get_category_target_name(transaction.get("category")) if transaction_kind == COST_KIND else INCOME_KIND
 
     return transaction_amount, transaction_date, category, transaction_kind
+
+
+def get_transaction_kind(transaction: Transaction) -> str:
+    transaction_kind = transaction.get("kind")
+    if isinstance(transaction_kind, str) and transaction_kind in {INCOME_KIND, COST_KIND}:
+        return transaction_kind
+
+    if isinstance(transaction.get("category"), str):
+        return COST_KIND
+
+    return INCOME_KIND
 
 
 def get_transaction_amount(transaction: Transaction) -> float | None:
@@ -329,6 +326,9 @@ def get_transaction_amount(transaction: Transaction) -> float | None:
 
 def get_transaction_date(transaction: Transaction) -> DateTuple | None:
     transaction_date = transaction.get("date")
+    if isinstance(transaction_date, str):
+        return extract_date(transaction_date)
+
     if not isinstance(transaction_date, tuple):
         return None
 
@@ -350,46 +350,20 @@ def get_category_target_name(raw_category: Any) -> str:
     if not isinstance(raw_category, str):
         return ""
 
-    category_parts = raw_category.split(CATEGORY_SEPARATOR)
-    if len(category_parts) != CATEGORY_PARTS_COUNT:
-        return raw_category
-
-    return category_parts[1]
+    return raw_category
 
 
-def is_current_month(current_date: DateTuple, report_date: DateTuple) -> bool:
-    if current_date[2] != report_date[2]:
-        return False
-
-    if current_date[1] != report_date[1]:
-        return False
-
-    return current_date[0] <= report_date[0]
-
-
-def format_profit_or_loss(current_income: float, current_cost: float) -> str:
-    if current_income >= current_cost:
-        delta = current_income - current_cost
-        return f"{PROFIT_TEXT} {delta:.2f} {RUBLES_TEXT}."
-
-    delta = current_cost - current_income
-    return f"{LOSS_TEXT} {delta:.2f} {RUBLES_TEXT}."
+def format_profit_or_loss(total_capital: float) -> str:
+    amount_word = "loss" if total_capital < 0 else "profit"
+    return f"This month, the {amount_word} amounted to {total_capital} {RUBLES_TEXT}."
 
 
 def format_details_lines(details: CategoryTotals) -> list[str]:
     details_lines: list[str] = []
-    sorted_items = sorted(details.items())
-    for index, (category, amount) in enumerate(sorted_items, start=MIN_DAY):
-        details_lines.append(f"{index}. {category}: {format_amount(amount)}")
+    for index, (category, amount) in enumerate(details.items()):
+        details_lines.append(f"{index}. {category}: {amount}")
 
     return details_lines
-
-
-def format_amount(amount: float) -> str:
-    if amount.is_integer():
-        return str(int(amount))
-
-    return f"{amount:.2f}"
 
 
 def parse_amount(raw_amount: str) -> float | None:
