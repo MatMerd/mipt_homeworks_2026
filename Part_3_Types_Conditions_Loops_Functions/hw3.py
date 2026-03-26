@@ -127,7 +127,7 @@ def is_valid_category(category: str) -> bool:
 
 
 def categories_list_string() -> str:
-    lines = []
+    lines: list[str] = []
 
     for common_category, targets in get_expense_categories().items():
         lines.extend(f"{common_category}::{target_category}" for target_category in targets)
