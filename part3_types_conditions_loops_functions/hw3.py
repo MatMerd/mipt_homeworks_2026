@@ -109,12 +109,10 @@ def to_str_date(date: list[int, int, int]) -> str:
 
 
 def less_or_equal(date1: str, date2: str) -> bool:
-	date1_ = extract_date(date1)
-	date2_ = extract_date(date2)
 	for i in [2, 1, 0]:
-		if date1_[i] < date2_[i]:
+		if date1[i] < date2[i]:
 			return True
-		if date1_[i] > date2_[i]:
+		if date1[i] > date2[i]:
 			return False
 	return True
 
@@ -192,7 +190,7 @@ def request_parser(request: str) -> dict | str:
 def income_handler(amount: float, income_date: str) -> str:
 	financial_transactions_storage.append({"request_type": "income",
 										   "amount": amount,
-										   "date": income_date})
+										   "date": extract_date(income_date)})
 	return OP_SUCCESS_MSG
 
 
@@ -200,7 +198,7 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
 	financial_transactions_storage.append({"request_type": "cost",
 										   "category": category_name,
 										   "amount": amount,
-										   "date": income_date})
+										   "date": extract_date(income_date)})
 	return OP_SUCCESS_MSG
 
 
@@ -262,7 +260,7 @@ def main() -> None:
 							   request["amount"],
 							   to_str_date(request["date"])))
 		elif request["request_type"] == "stats":
-			print(stats_handler(to_str_date(request["date"])))
+			print(stats_handler(request["date"]))
 
 		inp = input()
 
