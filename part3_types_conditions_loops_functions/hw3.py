@@ -224,6 +224,8 @@ def income_handler(amount: float, income_date: str) -> str:
 
 def cost_handler(category_name: str, amount: float, income_date: str) -> str:
     status: str | None = None
+    date: Date | None = None
+    parsed_category: tuple[str, str] | None = None
 
     if amount <= 0:
         status = NONPOSITIVE_VALUE_MSG
@@ -239,6 +241,10 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
     if status is not None:
         financial_transactions_storage.append({})
         return status
+
+    if parsed_category is None: # без этой проверки линтер ругается #
+        financial_transactions_storage.append({})
+        return UNKNOWN_COMMAND_MSG
 
     _, direct_category = parsed_category
     financial_transactions_storage.append(
