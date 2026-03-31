@@ -13,16 +13,11 @@ extend-exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = [
-    "D",
-    "ANN",
-    "INP",
-    "COM812",
-    "ISC001",
-]
+ignore = ["D", "ANN", "INP", "COM812", "ISC001"]
 
 [tool.ruff.lint.per-file-ignores]
-"Part_3_Types_Conditions_Loops_Functions/*" = ["T201"]
+"part3_types_conditions_loops_functions/*" = ["T201", "N999"]
+"**/tests/*" = ["S101", "PT022", "DTZ007", "S311"]
 
 [tool.mypy]
 python_version = "3.13"
