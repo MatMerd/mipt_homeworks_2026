@@ -37,6 +37,3 @@ class Cache(Protocol[K_contra, V]):
 
 class HasCache(Protocol[K, V]):
     cache: Cache[K, V]
-
-    @property
-    def cache(self) -> Cache[K, V]: ...
