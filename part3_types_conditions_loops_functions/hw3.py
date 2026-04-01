@@ -11,6 +11,7 @@ OP_SUCCESS_MSG = "Added"
 
 DATE_LENGTH = 3
 FEBRUARY_MONTH_NUMBER = 2
+MONTHS_IN_YEAR = 12
 MONTH_LAST_DAY = (
     31, 28, 31, 30, 31, 30,
     31, 31, 30, 31, 30, 31
@@ -73,17 +74,23 @@ def extract_date(maybe_dt: str) -> tuple[int, int, int] | None:
     :return: tuple формата (день, месяц, год) или None, если дата неправильная.
     :rtype: tuple[int, int, int] | None
     """
-    str_date = maybe_dt.split("-")
-    if len(str_date) != DATE_LENGTH:
+    raw_date_parts = maybe_dt.split("-")
+    if len(raw_date_parts) != DATE_LENGTH:
         return None
 
     try:
-        str_date = list(map(int, str_date))
-        if not (0 < str_date[1] < 13 and 0 < str_date[0] <= get_days_in_month(str_date[1], str_date[2])):
-            return None
+        date_parts = [int(part) for part in raw_date_parts]
     except ValueError:
         return None
-    return str_date[0], str_date[1], str_date[2]
+
+    day, month, year = date_parts
+    if not (0 < month <= MONTHS_IN_YEAR):
+        return None
+
+    if not (0 < day <= get_days_in_month(month, year)):
+        return None
+
+    return day, month, year
 
 
 def extract_amount(amount: str) -> float | None:
@@ -94,14 +101,15 @@ def extract_amount(amount: str) -> float | None:
         :return: float или None, если не является числом.
         :rtype: float | None
     """
-    amount = amount.strip().replace(",", ".")
+    normalized_amount = amount.strip().replace(",", ".")
     try:
-        amount = float(amount)
-        if amount <= 0:
+        parsed_amount = float(normalized_amount)
+        if parsed_amount <= 0:
             return None
-        return amount
     except ValueError:
         return None
+    else:
+        return parsed_amount
 
 
 def income_handler(amount: float, income_date: tuple[int, int, int] | str) -> str:
@@ -116,14 +124,15 @@ def income_handler(amount: float, income_date: tuple[int, int, int] | str) -> st
         financial_transactions_storage.append({})
         return NONPOSITIVE_VALUE_MSG
 
-    if isinstance(income_date, str):
-        income_date = extract_date(income_date)
+    parsed_income_date = income_date
+    if isinstance(parsed_income_date, str):
+        parsed_income_date = extract_date(parsed_income_date)
 
-    if income_date is None:
+    if parsed_income_date is None:
         financial_transactions_storage.append({})
         return INCORRECT_DATE_MSG
 
-    financial_transactions_storage.append({"amount": amount, "date": income_date})
+    financial_transactions_storage.append({"amount": amount, "date": parsed_income_date})
     return OP_SUCCESS_MSG
 
 
@@ -215,14 +224,15 @@ def cost_handler(category_name: str, amount: float, income_date: tuple[int, int,
         financial_transactions_storage.append({})
         return NONPOSITIVE_VALUE_MSG
 
-    if isinstance(income_date, str):
-        income_date = extract_date(income_date)
+    parsed_income_date = income_date
+    if isinstance(parsed_income_date, str):
+        parsed_income_date = extract_date(parsed_income_date)
 
-    if income_date is None:
+    if parsed_income_date is None:
         financial_transactions_storage.append({})
         return INCORRECT_DATE_MSG
 
-    financial_transactions_storage.append({"category": category_name, "amount": amount, "date": income_date})
+    financial_transactions_storage.append({"category": category_name, "amount": amount, "date": parsed_income_date})
     return OP_SUCCESS_MSG
 
 
@@ -390,7 +400,11 @@ def get_data(report_date: tuple[int, int, int]) -> dict[str, float]:
         if "category" not in transaction or "date" not in transaction:
             continue
 
-        if not is_same_month(transaction["date"], report_date) or not is_date_not_later(transaction["date"], report_date):
+        transaction_date = transaction["date"]
+        if not is_same_month(transaction_date, report_date):
+            continue
+
+        if not is_date_not_later(transaction_date, report_date):
             continue
 
         child_category = get_child_category(transaction["category"])
