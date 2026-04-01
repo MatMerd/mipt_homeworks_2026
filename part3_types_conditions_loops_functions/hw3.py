@@ -442,7 +442,7 @@ def is_date_not_later(first_date: Date, second_date: Date) -> bool:
 
 def has_transaction_date(transaction: dict[str, Any]) -> bool:
     """
-        Проверяет наличие даты у транзакции
+        Проверяет наличие даты в транзакции
 
         :param dict[str, Any] transaction: Транзакция
         :rtype: bool
@@ -588,10 +588,12 @@ def stats_handler(report_date: Date) -> None:
     capital = calculate_total_capital(report_date)
     data = get_data(report_date)
     income, expenses = calculate_stats(report_date)
+    result_type = get_result_type(income, expenses)
+    month_result = format_amount(abs(income - expenses))
 
     print(f"Your statistics as of {beautify_date(report_date)}:")
     print(f"Total capital: {format_amount(capital)} rubles")
-    print(f"This month, the {get_result_type(income, expenses)} amounted to {format_amount(abs(income - expenses))} rubles.")
+    print(f"This month, the {result_type} amounted to {month_result} rubles.")
     print(f"Income: {format_amount(income)} rubles")
     print(f"Expenses: {format_amount(expenses)} rubles")
     print("\nDetails (category: amount):")
