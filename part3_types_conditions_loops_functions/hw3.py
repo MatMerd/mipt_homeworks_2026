@@ -11,7 +11,7 @@ OP_SUCCESS_MSG = "Added"
 AMOUNT_KEY = "amount"
 DATE_KEY = "date"
 CATEGORY_KEY = "category"
-ZERO_AMOUNT = float()
+ZERO_AMOUNT = 0e0
 
 DATE_LENGTH = 3
 FEBRUARY_MONTH_NUMBER = 2
