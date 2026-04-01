@@ -45,9 +45,9 @@ jobs:
               CHANGED_FILES=$(git diff --name-only "${{ github.event.before }}" "${{ github.event.after }}" 2>/dev/null || git diff --name-only HEAD~1 HEAD)
             fi
           fi
-          
+
           PY_FILES=$(echo "$CHANGED_FILES" | grep '\.py$' || true)
-          
+
           if [ -z "$PY_FILES" ]; then
             echo "folders=[]" >> $GITHUB_OUTPUT
             echo "has_changes=false" >> $GITHUB_OUTPUT
@@ -81,6 +81,9 @@ jobs:
 
       - name: Run ruff check
         run: uv run ruff check "${{ matrix.folder }}"
+
+      - name: Run ruff format
+        run: uv run ruff format --check "${{ matrix.folder }}"
 
       - name: Run wemake-python-styleguide
         run: uv run flake8 "${{ matrix.folder }}"
