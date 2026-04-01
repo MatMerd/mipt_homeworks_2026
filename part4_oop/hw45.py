@@ -184,7 +184,7 @@ class CachedProperty[V]:
         if instance is None:
             return cast("V", self)
 
-        cache = instance.get_cache()
+        cache = instance.cache
         key = self.name
 
         if cache.exists(key):
