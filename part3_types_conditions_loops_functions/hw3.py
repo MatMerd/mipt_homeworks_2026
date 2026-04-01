@@ -11,7 +11,7 @@ OP_SUCCESS_MSG = "Added"
 AMOUNT_KEY = "amount"
 DATE_KEY = "date"
 CATEGORY_KEY = "category"
-ZERO_AMOUNT = 0.0
+ZERO_AMOUNT = float()
 
 DATE_LENGTH = 3
 FEBRUARY_MONTH_NUMBER = 2
@@ -424,7 +424,11 @@ def is_same_month(first_date: Date, second_date: Date) -> bool:
         :param tuple[int, int, int] second_date: Вторая дата
         :rtype: bool
     """
-    return get_month(first_date) == get_month(second_date) and get_year(first_date) == get_year(second_date)
+    first_month = get_month(first_date)
+    second_month = get_month(second_date)
+    if first_month != second_month:
+        return False
+    return get_year(first_date) == get_year(second_date)
 
 
 def is_date_not_later(first_date: Date, second_date: Date) -> bool:
@@ -585,19 +589,18 @@ def stats_handler(report_date: Date) -> None:
         :param tuple[int, int, int] report_date: Дата, за которую нужно получить отчет
         :rtype: None
     """
-    capital = calculate_total_capital(report_date)
-    data = get_data(report_date)
     income, expenses = calculate_stats(report_date)
     result_type = get_result_type(income, expenses)
     month_result = format_amount(abs(income - expenses))
 
     print(f"Your statistics as of {beautify_date(report_date)}:")
-    print(f"Total capital: {format_amount(capital)} rubles")
+    print(f"Total capital: {format_amount(calculate_total_capital(report_date))} rubles")
     print(f"This month, the {result_type} amounted to {month_result} rubles.")
     print(f"Income: {format_amount(income)} rubles")
     print(f"Expenses: {format_amount(expenses)} rubles")
     print("\nDetails (category: amount):")
-    print_stats_by_categories(data)
+    print_stats_by_categories(get_data(report_date))
+
 
 def main() -> None:
     for command in iter(input, ""):
