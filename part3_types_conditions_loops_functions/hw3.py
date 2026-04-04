@@ -65,7 +65,7 @@ def stats_handler(report_date: str) -> str:
 
 
 def main() -> None:
-    """Ваш код здесь"""
+    """spam eggs"""
 
 
 if __name__ == "__main__":
