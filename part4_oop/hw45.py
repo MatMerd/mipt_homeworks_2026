@@ -90,35 +90,36 @@ class LRUPolicy(Policy[K]):
 class LFUPolicy(Policy[K]):
     capacity: int = 5
     _key_counter: dict[K, int] = field(default_factory=dict, init=False)
-    _last_key: K | None = None
+    _order: list[K] = field(default_factory=list, init=False)
 
     def register_access(self, key: K) -> None:
         if key not in self._key_counter:
             self._key_counter[key] = 0
-        self._last_key = key
         self._key_counter[key] += 1
+
+        if key in self._order:
+            self._order.remove(key)
+        self._order.append(key)
 
     def get_key_to_evict(self) -> K | None:
         if len(self._key_counter) < self.capacity:
             return None
 
-        key_to_del = None
-        min_count = 0
+        min_count = min(self._key_counter.values())
 
-        for key in self._key_counter:
-            key_count = self._key_counter[key]
-            if key_to_del is None or key_count < min_count:
-                key_to_del = key
-                min_count = key_count
-            elif key_count == min_count and key == self._last_key:
-                key_to_del = key
-        return key_to_del
+        for key in self._order:
+            if self._key_counter[key] == min_count:
+                return key
+        return None
 
     def remove_key(self, key: K) -> None:
-        self._key_counter.pop(key)
+        self._key_counter.pop(key, None)
+        if key in self._order:
+            self._order.remove(key)
 
     def clear(self) -> None:
         self._key_counter.clear()
+        self._order.clear()
 
     @property
     def has_keys(self) -> bool:
