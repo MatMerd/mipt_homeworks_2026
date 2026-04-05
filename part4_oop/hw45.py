@@ -91,11 +91,13 @@ class LFUPolicy(Policy[K]):
     capacity: int = 5
     _key_counter: dict[K, int] = field(default_factory=dict, init=False)
     _order: list[K] = field(default_factory=list, init=False)
+    _last_key: K | None = None
 
     def register_access(self, key: K) -> None:
         if key not in self._key_counter:
             self._key_counter[key] = 0
         self._key_counter[key] += 1
+        self._last_key = key
 
         if key in self._order:
             self._order.remove(key)
@@ -105,10 +107,13 @@ class LFUPolicy(Policy[K]):
         if len(self._key_counter) < self.capacity:
             return None
 
-        min_count = min(self._key_counter.values())
+        candidates = [k for k in self._key_counter if k != self._last_key]
+        if not candidates:
+            return self._last_key
 
+        min_count = min(self._key_counter[k] for k in candidates)
         for key in self._order:
-            if self._key_counter[key] == min_count:
+            if key in candidates and self._key_counter[key] == min_count:
                 return key
         return None
 
@@ -116,10 +121,13 @@ class LFUPolicy(Policy[K]):
         self._key_counter.pop(key, None)
         if key in self._order:
             self._order.remove(key)
+        if self._last_key == key:
+            self._last_key = None
 
     def clear(self) -> None:
         self._key_counter.clear()
         self._order.clear()
+        self._last_key = None
 
     @property
     def has_keys(self) -> bool:
