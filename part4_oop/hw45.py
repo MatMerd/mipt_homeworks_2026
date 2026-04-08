@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import Any, Self, TypeVar
 
 from part4_oop.interfaces import Cache, HasCache, Policy, Storage
 
@@ -171,7 +171,7 @@ class CachedProperty[V]:
             return self
 
         if instance.cache.exists(self._name):
-            return instance.cache.get(self._name)
+            return instance.cache.get(self._name)  # type: ignore[return-value]
 
         answer = self.func(instance)
         instance.cache.set(self._name, answer)
