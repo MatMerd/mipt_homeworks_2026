@@ -21,10 +21,7 @@ AMOUNT_KEY = "amount"
 DATE_KEY = "date"
 CATEGORY_KEY = "category"
 
-DAYS_IN_MONTH = (
-    31, 28, 31, 30, 31, 30,
-    31, 31, 30, 31, 30, 31
-)
+DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 
 DATA_DATE = tuple[int, int, int]
 RESULT_OF_CALC = tuple[float, float, dict[str, float]]
@@ -157,16 +154,18 @@ def cost_handler(category_name: str, amount: float, income_date: str) -> str:
 
 
 def cost_categories_handler() -> str:
-    return "\n".join([
-        f"{common_category}::{target_category}"
-        for common_category, subcategories in EXPENSE_CATEGORIES.items()
-        for target_category in subcategories
-    ])
+    return "\n".join(
+        [
+            f"{common_category}::{target_category}"
+            for common_category, subcategories in EXPENSE_CATEGORIES.items()
+            for target_category in subcategories
+        ]
+    )
 
 
 def is_same_month(data1: DATA_DATE, data2: DATA_DATE) -> bool:
-    manth_check = (data1[1] == data2[1])
-    year_check = (data1[2] == data2[2])
+    manth_check = data1[1] == data2[1]
+    year_check = data1[2] == data2[2]
     return manth_check and year_check
 
 
@@ -213,19 +212,14 @@ def process_income_transaction(amount: float, month_income: float) -> float:
 
 
 def process_detailes_transaction(
-    amount: float,
-    category: str,
-    details_by_category: DETAILES_CAT_DATA
+    amount: float, category: str, details_by_category: DETAILES_CAT_DATA
 ) -> DETAILES_CAT_DATA:
     target_category = get_target_category(category)
     details_by_category[target_category] = details_by_category.get(target_category, 0) + amount
     return details_by_category
 
 
-def check_info_tr(
-    transaction: TRANSACTION_DATA,
-    date: DATA_DATE
-) -> bool:
+def check_info_tr(transaction: TRANSACTION_DATA, date: DATA_DATE) -> bool:
     tr_date = transaction.get(DATE_KEY)
     if tr_date is None:
         return True
@@ -260,9 +254,7 @@ def process_transaction(
 
 
 def process_transaction_detailes(
-    transaction: TRANSACTION_DATA,
-    date: DATA_DATE,
-    details_by_category: DETAILES_CAT_DATA
+    transaction: TRANSACTION_DATA, date: DATA_DATE, details_by_category: DETAILES_CAT_DATA
 ) -> dict[str, float]:
     if check_info_tr(transaction, date):
         return details_by_category
@@ -273,9 +265,7 @@ def process_transaction_detailes(
 
     category = transaction.get(CATEGORY_KEY)
     if category is not None:
-        details_by_category = process_detailes_transaction(
-            amount, category, details_by_category
-        )
+        details_by_category = process_detailes_transaction(amount, category, details_by_category)
     return details_by_category
 
 
