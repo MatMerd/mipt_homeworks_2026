@@ -55,7 +55,7 @@ def test_delete_popular_key(policy_generator: Callable[..., LFUPolicy[Any]]) -> 
 
 
 def test_tie_break_with_equal_counter(policy_generator: Callable[..., LFUPolicy[Any]]) -> None:
-    policy: LFUPolicy[str] = policy_generator(LFUPolicy, capacity=3)
+    policy: LFUPolicy[str] = policy_generator(LFUPolicy, capacity=2)
     access_count = 10
     for _ in range(access_count):
         policy.register_access(TEST_FIRST_KEY)

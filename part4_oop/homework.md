@@ -49,7 +49,7 @@
 Реализуйте класс-дескриптор `CachedProperty`. Он позволит автоматически кэшировать результаты "тяжелых" вычислений внутри атрибутов других классов.
 
 **Логика работы:**
-1. Конструктор дескриптора `__init__` должен принимать функцию, результат которой нужно кэшировать.
+1. Конструктор дескриптора `__init__` должен принимать функцию или метод, результат которой нужно кэшировать.
 2. При обращении к атрибуту (через метод `__get__`), дескриптор должен:
     *   Проверить, есть ли значение в кэше (объект кэша можно брать из самого экземпляра класса, например, через `instance.cache`).
     *   Если значение в кэше есть — вернуть его.
@@ -63,6 +63,27 @@ def compute_sum(instance):
 class HeavyCalculator:
     def __init__(self, cache):
         self.cache = cache
+
+    # Прямое присваивание дескриптора атрибуту класса
+    # Теперь при обращении к calculator.big_data будет срабатывать логика кэширования
+    big_data = CachedProperty(compute_sum)
+
+cache = Cache(storage=DictStorage(), policy=LFUPolicy(capacity=10))
+calculator = HeavyCalculator(cache)
+
+print(calculator.big_data) # Сработают вычисления
+print(calculator.big_data) # Значение возьмется из кэша
+```
+
+```python
+
+class HeavyCalculator:
+    def __init__(self, cache):
+        self.cache = cache
+
+    def compute_sum(self):
+        print("Сложные вычисления...")
+        return sum(range(10**6))
 
     # Прямое присваивание дескриптора атрибуту класса
     # Теперь при обращении к calculator.big_data будет срабатывать логика кэширования
