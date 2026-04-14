@@ -60,6 +60,9 @@ class CircuitBreaker:
                     raise BreakerError(self.func_name, self.block_time)
                 self.block_time = None
                 self.count = 0
+            return helper(*args, **kwargs)
+
+        def helper(*args: P.args, **kwargs: P.kwargs) -> R_co:
             try:
                 result = func(*args, **kwargs)
             except self.triggers_on as err:
