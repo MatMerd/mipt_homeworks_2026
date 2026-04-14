@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from functools import wraps
 from typing import Any, ParamSpec, Protocol, TypeVar
 from urllib.request import urlopen
 
@@ -51,6 +52,8 @@ class CircuitBreaker:
 
     def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[P, R_co]:
         self.func_name = f"{func.__module__}.{func.__name__}"
+
+        @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
             if self.block_time is not None:
                 if (datetime.now(UTC) - self.block_time).total_seconds() < self.time_to_recover:
@@ -68,6 +71,7 @@ class CircuitBreaker:
             self.count = 0
             self.block_time = None
             return result
+
         return wrapper
 
 
