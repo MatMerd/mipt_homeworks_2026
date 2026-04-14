@@ -60,22 +60,22 @@ class CircuitBreaker:
                     raise BreakerError(self.func_name, self.block_time)
                 self.block_time = None
                 self.count = 0
-            return helper(*args, **kwargs)
-
-        def helper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-            try:
-                result = func(*args, **kwargs)
-            except self.triggers_on as err:
-                self.count += 1
-                if self.count < self.critical_count:
-                    raise
-                self.block_time = datetime.now(UTC)
-                raise BreakerError(self.func_name, self.block_time) from err
-            self.count = 0
-            self.block_time = None
-            return result
+            return self.helper(func, *args, **kwargs)
 
         return wrapper
+
+    def helper(self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs) -> R_co:
+        try:
+            result = func(*args, **kwargs)
+        except self.triggers_on as err:
+            self.count += 1
+            if self.count < self.critical_count:
+                raise
+            self.block_time = datetime.now(UTC)
+            raise BreakerError(self.func_name, self.block_time) from err
+        self.count = 0
+        self.block_time = None
+        return result
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
