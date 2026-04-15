@@ -49,12 +49,14 @@ class CircuitBreaker:
         self.triggers_on = triggers_on
 
         self._failures = 0
-        self._block_time: datetime | None = None
+        self.time_of_closure: datetime | None = None
 
     def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[P, R_co]:
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-            self._check_blocked(func)
+            block_time = self._activate_block()
+            if block_time is not None:
+                raise BreakerError(TOO_MUCH, self._get_func_name(func), block_time)
 
             try:
                 return self._try_and_reset(func, *args, **kwargs)
@@ -64,37 +66,31 @@ class CircuitBreaker:
 
         return wrapper
 
+    def _activate_block(self) -> datetime | None:
+        if self.time_of_closure is None or self._failures < self.critical_count:
+            return None
+        time_passed = (datetime.now(UTC) - self.time_of_closure).total_seconds()
+        if time_passed < self.time_to_recover:
+            return self.time_of_closure
+        self._failures = 0
+        self.time_of_closure = None
+        return None
+
     def _try_and_reset(self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs) -> R_co:
         result = func(*args, **kwargs)
         self._failures = 0
-        self._block_time = None
+        self.time_of_closure = None
         return result
 
     def _get_func_name(self, func: CallableWithMeta[P, R_co]) -> str:
         return f"{func.__module__}.{func.__name__}"
 
-    def _check_blocked(self, func: CallableWithMeta[P, R_co]) -> None:
-        if self._block_time is not None:
-            now = datetime.now(UTC)
-            block_until = self._block_time + timedelta(seconds=self.time_to_recover)
-            if now < block_until:
-                raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time)
-            self._failures = 0
-            self._block_time = None
-
     def _handle_failure(self, func: CallableWithMeta[P, R_co], error: Exception) -> None:
         if self._failures + 1 >= self.critical_count:
             self._failures = self.critical_count
-            self.time_closed = datetime.now(UTC)
-            raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time) from error
+            self.time_of_closure = datetime.now(UTC)
+            raise BreakerError(TOO_MUCH, self._get_func_name(func), self.time_of_closure) from error
         self._failures += 1
-
-    def _record_failure(self) -> bool:
-        self._failures += 1
-        if self._failures >= self.critical_count:
-            self._block_time = datetime.now(UTC)
-            return True
-        return False
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
