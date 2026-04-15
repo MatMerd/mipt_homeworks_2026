@@ -57,16 +57,18 @@ class CircuitBreaker:
             self._check_blocked(func)
 
             try:
-                result = func(*args, **kwargs)
-            except Exception as e:
-                if isinstance(e, self.triggers_on) and self._record_failure():
-                    raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time) from e
+                return self._try_and_reset(func, *args, **kwargs)
+            except self.triggers_on as error:
+                self._handle_failure(func, error)
                 raise
-            else:
-                self._failures = 0
-                return result
 
         return wrapper
+
+    def _try_and_reset(self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs) -> R_co:
+        result = func(*args, **kwargs)
+        self.count = 0
+        self._block_time = None
+        return result
 
     def _get_func_name(self, func: CallableWithMeta[P, R_co]) -> str:
         return f"{func.__module__}.{func.__name__}"
@@ -79,6 +81,13 @@ class CircuitBreaker:
                 raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time)
             self._failures = 0
             self._block_time = None
+
+    def _handle_failure(self, func: CallableWithMeta[P, R_co], error: Exception) -> None:
+        if self.count + 1 >= self.critical_count:
+            self.count = self.critical_count
+            self.time_closed = datetime.now(UTC)
+            raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time) from error
+        self.count += 1
 
     def _record_failure(self) -> bool:
         self._failures += 1
