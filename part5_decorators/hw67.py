@@ -66,7 +66,7 @@ class CircuitBreaker:
 
     def _try_and_reset(self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs) -> R_co:
         result = func(*args, **kwargs)
-        self.count = 0
+        self._failures = 0
         self._block_time = None
         return result
 
@@ -83,11 +83,11 @@ class CircuitBreaker:
             self._block_time = None
 
     def _handle_failure(self, func: CallableWithMeta[P, R_co], error: Exception) -> None:
-        if self.count + 1 >= self.critical_count:
-            self.count = self.critical_count
+        if self._failures + 1 >= self.critical_count:
+            self._failures = self.critical_count
             self.time_closed = datetime.now(UTC)
             raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time) from error
-        self.count += 1
+        self._failures += 1
 
     def _record_failure(self) -> bool:
         self._failures += 1
