@@ -80,6 +80,7 @@ class CircuitBreaker:
     def _get_func_name(self, func: CallableWithMeta[P, R_co]) -> str:
         return f"{func.__module__}.{func.__name__}"
 
+
 circuit_breaker = CircuitBreaker(5, 30, Exception)
 
 
