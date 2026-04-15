@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 from typing import Any, ParamSpec, Protocol, TypeVar
 from urllib.request import urlopen
@@ -56,7 +56,8 @@ class CircuitBreaker:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
             if self._block_time is not None:
                 now = datetime.now(UTC)
-                if now < self._block_time:
+                block_until = self._block_time + timedelta(seconds=self.time_to_recover)
+                if now < block_until:
                     raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time)
                 self._failures = 0
                 self._block_time = None
