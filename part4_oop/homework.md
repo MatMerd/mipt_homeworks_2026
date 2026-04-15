@@ -87,9 +87,12 @@
           })
         });
 
-        if (!response.ok) {
-          throw new Error(`Ошибка HTTP: ${response.status}`);
-        }
+**Логика работы:**
+1. Конструктор дескриптора `__init__` должен принимать функцию или метод, результат которой нужно кэшировать.
+2. При обращении к атрибуту (через метод `__get__`), дескриптор должен:
+    *   Проверить, есть ли значение в кэше (объект кэша можно брать из самого экземпляра класса, например, через `instance.cache`).
+    *   Если значение в кэше есть — вернуть его.
+    *   Если значения нет — вызвать сохраненную функцию, передав ей `instance`, сохранить результат в кэш и вернуть его.
 
         localStorage.removeItem('currentGameId');
         localStorage.removeItem('selectedTopic');
@@ -110,8 +113,28 @@
     async function stopGame() {
       if (gameStopped) return;
 
-      try {
-        const session = AuthService.getsession();
+```python
+
+class HeavyCalculator:
+    def __init__(self, cache):
+        self.cache = cache
+
+    def compute_sum(self):
+        print("Сложные вычисления...")
+        return sum(range(10**6))
+
+    # Прямое присваивание дескриптора атрибуту класса
+    # Теперь при обращении к calculator.big_data будет срабатывать логика кэширования
+    big_data = CachedProperty(compute_sum)
+
+cache = Cache(storage=DictStorage(), policy=LFUPolicy(capacity=10))
+calculator = HeavyCalculator(cache)
+
+print(calculator.big_data) # Сработают вычисления
+print(calculator.big_data) # Значение возьмется из кэша
+```
+
+---
 
         const response = await fetch('http://localhost:8080/api/game/stop', {
           method: 'POST',
@@ -234,7 +257,6 @@
       textDiv.appendChild(positionElement);
       textDiv.appendChild(usernameElement);
       textDiv.appendChild(scoreElement);
-
       playerDiv.appendChild(textDiv);
       return playerDiv;
     }
