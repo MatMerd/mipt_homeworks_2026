@@ -22,7 +22,7 @@ class CallableWithMeta(Protocol[P, R_co]):
 
 
 class BreakerError(Exception):
-    def __init__(self, message: str, func_name: str, block_time: datetime):
+    def __init__(self, message: str, func_name: str, block_time: datetime | None):
         self.func_name = func_name
         self.block_time = block_time
         super().__init__(message)
@@ -54,22 +54,13 @@ class CircuitBreaker:
     def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[P, R_co]:
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-            if self._block_time is not None:
-                now = datetime.now(UTC)
-                block_until = self._block_time + timedelta(seconds=self.time_to_recover)
-                if now < block_until:
-                    raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time)
-                self._failures = 0
-                self._block_time = None
+            self._check_blocked(func)
 
             try:
                 result = func(*args, **kwargs)
             except Exception as e:
-                if isinstance(e, self.triggers_on):
-                    self._failures += 1
-                    if self._failures >= self.critical_count:
-                        self._block_time = datetime.now(UTC)
-                        raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time) from e
+                if isinstance(e, self.triggers_on) and self._record_failure():
+                    raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time) from e
                 raise
             else:
                 self._failures = 0
@@ -79,6 +70,22 @@ class CircuitBreaker:
 
     def _get_func_name(self, func: CallableWithMeta[P, R_co]) -> str:
         return f"{func.__module__}.{func.__name__}"
+
+    def _check_blocked(self, func: CallableWithMeta[P, R_co]) -> None:
+        if self._block_time is not None:
+            now = datetime.now(UTC)
+            block_until = self._block_time + timedelta(seconds=self.time_to_recover)
+            if now < block_until:
+                raise BreakerError(TOO_MUCH, self._get_func_name(func), self._block_time)
+            self._failures = 0
+            self._block_time = None
+
+    def _record_failure(self) -> bool:
+        self._failures += 1
+        if self._failures >= self.critical_count:
+            self._block_time = datetime.now(UTC)
+            return True
+        return False
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
