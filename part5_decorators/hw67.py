@@ -73,15 +73,9 @@ class CircuitBreaker:
 
     def _validate(self) -> None:
         errors: list[ValueError] = []
-        if (
-            not isinstance(self._critical_count, int)
-            or self._critical_count <= 0
-        ):
+        if not isinstance(self._critical_count, int) or self._critical_count <= 0:
             errors.append(ValueError(INVALID_CRITICAL_COUNT))
-        if (
-            not isinstance(self._time_to_recover, int)
-            or self._time_to_recover <= 0
-        ):
+        if not isinstance(self._time_to_recover, int) or self._time_to_recover <= 0:
             errors.append(ValueError(INVALID_RECOVERY_TIME))
         if errors:
             raise ExceptionGroup(VALIDATIONS_FAILED, errors)
