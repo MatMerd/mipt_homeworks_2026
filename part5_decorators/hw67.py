@@ -1,7 +1,8 @@
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from functools import wraps
-from typing import Any, ParamSpec, Protocol, TypeVar, Callable
+from typing import Any, ParamSpec, Protocol, TypeVar
 from urllib.request import urlopen
 
 INVALID_CRITICAL_COUNT = "Breaker count must be positive integer!"
@@ -97,7 +98,7 @@ class CircuitBreaker:
 
             try:
                 result = func(*args, **kwargs)
-            except Exception as e:
+            except self.triggers_on as e:
                 self._notice_error(e)
             else:
                 self.errors_count = 0
