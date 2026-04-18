@@ -92,8 +92,10 @@ class CircuitBreaker:
         self.func_name = f"{func.__module__}.{func.__name__}"
 
         @wraps(wrapped=func)
-        def wrapper(*args, **kwargs) -> R_co:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
             if self._should_block():
+                if self.open_until is None:
+                    raise BreakerError(self.func_name, datetime.now(UTC), None)
                 raise BreakerError(self.func_name, self.open_until, None)
 
             try:
@@ -113,10 +115,8 @@ circuit_breaker = CircuitBreaker(5, 30, Exception)
 def get_comments(post_id: int) -> Any:
     """
     Получает комментарии к посту
-
     Args:
         post_id (int): Идентификатор поста
-
     Returns:
         list[dict[int | str]]: Список комментариев
     """
