@@ -76,9 +76,6 @@ class CircuitBreaker:
         return True
 
     def _notice_error(self, error: Exception) -> None:
-        if not isinstance(error, self.triggers_on):
-            raise error
-
         self.errors_count += 1
         if self.errors_count >= self.critical_count:
             self.is_open = True
@@ -100,8 +97,10 @@ class CircuitBreaker:
 
             try:
                 result = func(*args, **kwargs)
-            except self.triggers_on as e:
-                self._notice_error(e)
+            except Exception as e:
+                if isinstance(e, self.triggers_on):
+                    self._notice_error(e)
+                raise
             else:
                 self.errors_count = 0
                 return result
