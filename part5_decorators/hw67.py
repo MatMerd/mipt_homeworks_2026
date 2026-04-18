@@ -84,7 +84,6 @@ class CircuitBreaker:
             try:
                 result = func(*args, **kwargs)
                 self.errors_count = 0
-                return result
 
             except Exception as e:
                 if isinstance(e, self.triggers_on):
@@ -102,6 +101,8 @@ class CircuitBreaker:
                         ) from e
 
                 raise
+            else:
+                return result
 
         return wrapper
 
