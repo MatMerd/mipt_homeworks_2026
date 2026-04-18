@@ -24,11 +24,7 @@ class CallableWithMeta(Protocol[P, R_co]):
 
 
 class BreakerError(Exception):
-    def __init__(
-            self, func_name: str,
-            block_time: datetime,
-            source_exception: Exception | None = None
-    ) -> None:
+    def __init__(self, func_name: str, block_time: datetime, source_exception: Exception | None = None) -> None:
         self.func_name = func_name
         self.block_time = block_time
         self.source_exception = source_exception
@@ -75,11 +71,7 @@ class CircuitBreaker:
                     self.is_open = False
                     self.errors_count = 0
                 else:
-                    raise BreakerError(
-                        self.func_name,
-                        self.open_until,
-                        None
-                    )
+                    raise BreakerError(self.func_name, self.open_until, None)
 
             try:
                 result = func(*args, **kwargs)
@@ -94,18 +86,13 @@ class CircuitBreaker:
                         right_time = datetime.now(UTC)
                         self.open_until = right_time + timedelta(seconds=self.time_to_recover)
 
-                        raise BreakerError(
-                            self.func_name,
-                            right_time,
-                            e
-                        ) from e
+                        raise BreakerError(self.func_name, right_time, e) from e
 
                 raise
             else:
                 return result
 
         return wrapper
-
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
