@@ -37,9 +37,7 @@ STATS_ARGS_COUNT = 2
 FEBRUARY = 2
 COST_CATEGORIES_ARGS_COUNT = 2
 
-valid_days_in_month: list[int] = [
-    0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
-]
+valid_days_in_month: list[int] = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 
 def is_leap_year(year: int) -> bool:
@@ -191,10 +189,7 @@ def income_handler(amount: str | float, income_date: str) -> str:
         return UNKNOWN_COMMAND_MSG
 
     incomes.append((amount_parsed, date))
-    financial_transactions_storage.append({
-        "amount": amount_parsed,
-        "date": date
-    })
+    financial_transactions_storage.append({"amount": amount_parsed, "date": date})
 
     return OP_SUCCESS_MSG
 
@@ -221,11 +216,7 @@ def cost_handler(category_name: str, amount: str | float, income_date: str) -> s
         return UNKNOWN_COMMAND_MSG
 
     expenses.append((category_name, amount_parsed, date))
-    financial_transactions_storage.append({
-        "category": category_name,
-        "amount": amount_parsed,
-        "date": date
-    })
+    financial_transactions_storage.append({"category": category_name, "amount": amount_parsed, "date": date})
 
     return OP_SUCCESS_MSG
 
@@ -254,11 +245,7 @@ def format_delta(income: float, expenses_total: float) -> list[str]:
 
 
 def format_income_expenses(income: float, expenses_total: float) -> list[str]:
-    return [
-        f"Income: {income:.2f} rubles",
-        f"Expenses: {expenses_total:.2f} rubles\n",
-        "Details (category: amount):"
-    ]
+    return [f"Income: {income:.2f} rubles", f"Expenses: {expenses_total:.2f} rubles\n", "Details (category: amount):"]
 
 
 def format_categories(categories: dict[str, float]) -> list[str]:
