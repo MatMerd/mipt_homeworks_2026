@@ -61,6 +61,36 @@ class CircuitBreaker:
         self._open_until: datetime | None = None
         self._func_name: str = ""
 
+    def __call__(self, func: CallableWithMeta[P, R_co]) -> Callable[..., R_co]:
+        self._func_name = f"{func.__module__}.{func.__name__}"
+
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
+            self._handle_blocked()
+
+            result = self._run_func(func, *args, **kwargs)
+            self._errors_count = 0
+            return result
+
+        return wrapper
+
+    def _handle_blocked(self) -> None:
+        if not self._should_block():
+            return
+
+        if self._open_until is None:
+            raise BreakerError(self._func_name, datetime.now(UTC), None)
+
+        raise BreakerError(self._func_name, self._open_until, None)
+
+    def _run_func(self, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if isinstance(e, self.triggers_on):
+                self._notice_error(e)
+            raise
+
     def _should_block(self) -> bool:
         if not self._is_open:
             return False
@@ -80,27 +110,6 @@ class CircuitBreaker:
             self._open_until = right_time + timedelta(seconds=self.time_to_recover)
             raise BreakerError(self._func_name, right_time, error) from error
         raise error
-
-    def __call__(self, func: CallableWithMeta[P, R_co]) -> Callable[..., R_co]:
-        self._func_name = f"{func.__module__}.{func.__name__}"
-
-        @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-            if self._should_block():
-                if self._open_until is None:
-                    raise BreakerError(self._func_name, datetime.now(UTC), None)
-                raise BreakerError(self._func_name, self._open_until, None)
-            try:
-                result = func(*args, **kwargs)
-            except Exception as e:
-                if isinstance(e, self.triggers_on):
-                    self._notice_error(e)
-                raise
-            else:
-                self._errors_count = 0
-                return result
-
-        return wrapper
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
