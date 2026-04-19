@@ -24,6 +24,19 @@ class CallableWithMeta(Protocol[P, R_co]):
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R_co: ...
 
 
+def validate_input(critical_count: int, time_to_recover: int) -> None:
+    errors: list[Exception] = []
+
+    if not isinstance(critical_count, int) or critical_count <= 0:
+        errors.append(ValueError(INVALID_CRITICAL_COUNT))
+
+    if not isinstance(time_to_recover, int) or time_to_recover <= 0:
+        errors.append(ValueError(INVALID_RECOVERY_TIME))
+
+    if errors:
+        raise ExceptionGroup(VALIDATIONS_FAILED, errors)
+
+
 class BreakerError(Exception):
     def __init__(self, func_name: str, block_time: datetime, source_exception: Exception | None = None) -> None:
         self.func_name = func_name
@@ -39,57 +52,44 @@ class CircuitBreaker:
         time_to_recover: int = DEFAULT_RECOVERY_TIME,
         triggers_on: type[Exception] = Exception,
     ) -> None:
-        self.validate_input(critical_count, time_to_recover)
+        validate_input(critical_count, time_to_recover)
         self.critical_count = critical_count
         self.time_to_recover = time_to_recover
         self.triggers_on = triggers_on
-        self.errors_count: int = 0
-        self.is_open: bool = False
-        self.open_until: datetime | None = None
-        self.func_name: str = ""
-
-    @staticmethod
-    def validate_input(critical_count: int, time_to_recover: int) -> None:
-        errors: list[Exception] = []
-
-        if not isinstance(critical_count, int) or critical_count <= 0:
-            errors.append(ValueError(INVALID_CRITICAL_COUNT))
-
-        if not isinstance(time_to_recover, int) or time_to_recover <= 0:
-            errors.append(ValueError(INVALID_RECOVERY_TIME))
-
-        if errors:
-            raise ExceptionGroup(VALIDATIONS_FAILED, errors)
+        self._errors_count: int = 0
+        self._is_open: bool = False
+        self._open_until: datetime | None = None
+        self._func_name: str = ""
 
     def _should_block(self) -> bool:
-        if not self.is_open:
+        if not self._is_open:
             return False
 
         cur_time = datetime.now(UTC)
-        if self.open_until and cur_time >= self.open_until:
-            self.is_open = False
-            self.errors_count = 0
+        if self._open_until and cur_time >= self._open_until:
+            self._is_open = False
+            self._errors_count = 0
             return False
         return True
 
     def _notice_error(self, error: Exception) -> None:
-        self.errors_count += 1
-        if self.errors_count >= self.critical_count:
-            self.is_open = True
+        self._errors_count += 1
+        if self._errors_count >= self.critical_count:
+            self._is_open = True
             right_time = datetime.now(UTC)
-            self.open_until = right_time + timedelta(seconds=self.time_to_recover)
-            raise BreakerError(self.func_name, right_time, error) from error
+            self._open_until = right_time + timedelta(seconds=self.time_to_recover)
+            raise BreakerError(self._func_name, right_time, error) from error
         raise error
 
     def __call__(self, func: CallableWithMeta[P, R_co]) -> Callable[..., R_co]:
-        self.func_name = f"{func.__module__}.{func.__name__}"
+        self._func_name = f"{func.__module__}.{func.__name__}"
 
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
             if self._should_block():
-                if self.open_until is None:
-                    raise BreakerError(self.func_name, datetime.now(UTC), None)
-                raise BreakerError(self.func_name, self.open_until, None)
+                if self._open_until is None:
+                    raise BreakerError(self._func_name, datetime.now(UTC), None)
+                raise BreakerError(self._func_name, self._open_until, None)
             try:
                 result = func(*args, **kwargs)
             except Exception as e:
@@ -97,7 +97,7 @@ class CircuitBreaker:
                     self._notice_error(e)
                 raise
             else:
-                self.errors_count = 0
+                self._errors_count = 0
                 return result
 
         return wrapper
