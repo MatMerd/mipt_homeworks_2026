@@ -36,9 +36,9 @@ class CircuitBreaker:
         triggers_on: type[Exception] = Exception,
     ):
         errors: list[ValueError] = []
-        if critical_count <= 0:
+        if not isinstance(critical_count, int) or critical_count <= 0:
             errors.append(ValueError(INVALID_CRITICAL_COUNT))
-        if time_to_recover <= 0:
+        if not isinstance(time_to_recover, int) or time_to_recover <= 0:
             errors.append(ValueError(INVALID_RECOVERY_TIME))
         if errors:
             raise ExceptionGroup(VALIDATIONS_FAILED, errors)
@@ -46,36 +46,45 @@ class CircuitBreaker:
         self.critical_count = critical_count
         self.time_to_recover = time_to_recover
         self.triggers_on = triggers_on
-        self.count = 0
-        self.block_time: datetime | None = None
-        self.func_name: str | None = None
 
     def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[P, R_co]:
-        self.func_name = f"{func.__module__}.{func.__name__}"
+        func_name = f"{func.__module__}.{func.__name__}"
+        count = 0
+        block_time: datetime | None = None
 
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-            if self.block_time is not None:
-                if (datetime.now(UTC) - self.block_time).total_seconds() < self.time_to_recover:
-                    raise BreakerError(self.func_name, self.block_time)
-                self.block_time = None
-                self.count = 0
-            return self.helper(func, *args, **kwargs)
+            nonlocal count, block_time
+            if block_time is not None:
+                if (datetime.now(UTC) - block_time).total_seconds() < self.time_to_recover:
+                    raise BreakerError(func_name, block_time)
+                block_time = None
+                count = 0
+            result, count, block_time = self.helper(func, func_name, count, block_time, *args, **kwargs)
+            return result
 
         return wrapper
 
-    def helper(self, func: CallableWithMeta[P, R_co], *args: P.args, **kwargs: P.kwargs) -> R_co:
+    def helper(
+        self,
+        func: CallableWithMeta[P, R_co],
+        func_name: str,
+        count: int,
+        block_time: datetime | None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> tuple[R_co, int, datetime | None]:
         try:
             result = func(*args, **kwargs)
         except self.triggers_on as err:
-            self.count += 1
-            if self.count < self.critical_count:
+            count += 1
+            if count < self.critical_count:
                 raise
-            self.block_time = datetime.now(UTC)
-            raise BreakerError(self.func_name, self.block_time) from err
-        self.count = 0
-        self.block_time = None
-        return result
+            block_time = datetime.now(UTC)
+            raise BreakerError(func_name, block_time) from err
+        count = 0
+        block_time = None
+        return result, count, block_time
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
