@@ -46,21 +46,21 @@ class CircuitBreaker:
         self.critical_count = critical_count
         self.time_to_recover = time_to_recover
         self.triggers_on = triggers_on
+        self.count = 0
 
     def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[P, R_co]:
         func_name = f"{func.__module__}.{func.__name__}"
-        count = 0
         block_time: datetime | None = None
 
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-            nonlocal count, block_time
+            nonlocal block_time
             if block_time is not None:
                 if (datetime.now(UTC) - block_time).total_seconds() < self.time_to_recover:
                     raise BreakerError(func_name, block_time)
                 block_time = None
-                count = 0
-            result, count, block_time = self.helper(func, func_name, count, block_time, *args, **kwargs)
+                self.count = 0
+            result, block_time = self.helper(func, func_name, block_time, *args, **kwargs)
             return result
 
         return wrapper
@@ -69,22 +69,21 @@ class CircuitBreaker:
         self,
         func: CallableWithMeta[P, R_co],
         func_name: str,
-        count: int,
         block_time: datetime | None,
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> tuple[R_co, int, datetime | None]:
+    ) -> tuple[R_co, datetime | None]:
         try:
             result = func(*args, **kwargs)
         except self.triggers_on as err:
-            count += 1
-            if count < self.critical_count:
+            self.count += 1
+            if self.count < self.critical_count:
                 raise
             block_time = datetime.now(UTC)
             raise BreakerError(func_name, block_time) from err
-        count = 0
+        self.count = 0
         block_time = None
-        return result, count, block_time
+        return result, block_time
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
