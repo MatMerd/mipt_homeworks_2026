@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import wraps
 from typing import Any, ParamSpec, Protocol, TypeVar
@@ -12,6 +13,12 @@ TOO_MUCH = "Too much requests, just wait."
 
 P = ParamSpec("P")
 R_co = TypeVar("R_co", covariant=True)
+
+
+@dataclass
+class BreakerState:
+    count: int = 0
+    block_time: datetime | None = None
 
 
 class CallableWithMeta(Protocol[P, R_co]):
@@ -50,18 +57,16 @@ class CircuitBreaker:
 
     def __call__(self, func: CallableWithMeta[P, R_co]) -> CallableWithMeta[P, R_co]:
         func_name = f"{func.__module__}.{func.__name__}"
-        block_time: datetime | None = None
+        state = BreakerState()
 
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R_co:
-            nonlocal block_time
-            if block_time is not None:
-                if (datetime.now(UTC) - block_time).total_seconds() < self.time_to_recover:
-                    raise BreakerError(func_name, block_time)
-                block_time = None
-                self.count = 0
-            result, block_time = self.helper(func, func_name, block_time, *args, **kwargs)
-            return result
+            if state.block_time is not None:
+                if (datetime.now(UTC) - state.block_time).total_seconds() < self.time_to_recover:
+                    raise BreakerError(func_name, state.block_time)
+                state.block_time = None
+                state.count = 0
+            return self.helper(func, func_name, state, *args, **kwargs)
 
         return wrapper
 
@@ -69,21 +74,21 @@ class CircuitBreaker:
         self,
         func: CallableWithMeta[P, R_co],
         func_name: str,
-        block_time: datetime | None,
+        state: BreakerState,
         *args: P.args,
         **kwargs: P.kwargs,
-    ) -> tuple[R_co, datetime | None]:
+    ) -> R_co:
         try:
             result = func(*args, **kwargs)
         except self.triggers_on as err:
-            self.count += 1
-            if self.count < self.critical_count:
+            state.count += 1
+            if state.count < self.critical_count:
                 raise
-            block_time = datetime.now(UTC)
-            raise BreakerError(func_name, block_time) from err
-        self.count = 0
-        block_time = None
-        return result, block_time
+            state.block_time = datetime.now(UTC)
+            raise BreakerError(func_name, state.block_time) from err
+        state.count = 0
+        state.block_time = None
+        return result
 
 
 circuit_breaker = CircuitBreaker(5, 30, Exception)
