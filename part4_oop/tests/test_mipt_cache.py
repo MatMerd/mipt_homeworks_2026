@@ -50,3 +50,14 @@ def test_cache_with_lru_policy(
     cache.set(f"{TEST_FIRST_KEY}_1", random_string_generator())
     assert TEST_FIRST_KEY not in policy._order  # noqa: SLF001
     assert not cache.exists(TEST_FIRST_KEY)
+
+def test_get_nonexistent_key(
+    policy_generator: Callable[..., LFUPolicy[Any]],
+    dict_storage: DictStorage[str, str],
+    random_string_generator: Callable[..., str],
+) -> None:
+    policy: LFUPolicy[str] = policy_generator(LFUPolicy[str], capacity=2)
+    cache = MIPTCache(storage=dict_storage, policy=policy)
+    random_key: str = random_string_generator()
+    cache.get(random_key)
+    assert not policy.has_keys
